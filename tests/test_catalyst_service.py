@@ -31,3 +31,11 @@ def test_catalyst_events_have_future_dates():
     now = datetime.now(timezone.utc)
 
     assert all(event.date >= now for event in events)
+
+
+def test_catalyst_events_are_sorted_chronologically():
+    service = CatalystService()
+    events = asyncio.run(service.get_catalysts())
+
+    dates = [event.date for event in events]
+    assert dates == sorted(dates)

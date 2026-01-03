@@ -37,6 +37,33 @@ async def test_outlook_basic(async_client):
 
 
 @pytest.mark.asyncio
+async def test_outlook_response_includes_all_sections(async_client):
+    """Test outlook response always includes all expected sections."""
+    async with async_client as client:
+        response = await client.post(
+            "/outlook",
+            json={"symbol": "AAPL", "timeframeDays": 30},
+        )
+
+    assert response.status_code == 200
+    data = response.json()
+    expected_keys = {
+        "ticker",
+        "timeframe_days",
+        "sentiment_summary",
+        "key_drivers",
+        "volatility_band",
+        "historical_hit_rate",
+        "personal_context",
+        "volatility_warning",
+        "timeframe_note",
+        "generated_at",
+        "source",
+    }
+    assert expected_keys.issubset(data.keys())
+
+
+@pytest.mark.asyncio
 async def test_outlook_default_timeframe(async_client):
     """Test outlook with default timeframe (30 days)."""
     async with async_client as client:
