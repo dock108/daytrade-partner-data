@@ -52,7 +52,7 @@ def create_app() -> FastAPI:
 
     # Register routers
     app.include_router(health.router, tags=["Health"])
-    app.include_router(market.router, prefix="/market", tags=["Market"])
+    app.include_router(market.router, prefix="/ticker", tags=["Market"])
     app.include_router(outlook.router, tags=["Outlook"])
     app.include_router(ai.router, tags=["AI"])
 
