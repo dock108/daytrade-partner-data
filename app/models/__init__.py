@@ -1,14 +1,7 @@
 """Pydantic models for API request/response schemas."""
 
-from app.models.explain import (
-    AIResponse,
-    ExplainRequest,
-    ExplainResponse,
-    ResponseSection,
-    SectionType,
-    SourceReference,
-    SourceType,
-)
+from app.models.ai import AIResponse
+from app.models.explain import ExplainRequest
 from app.models.outlook import (
     Outlook,
     OutlookRequest,
@@ -23,6 +16,9 @@ from app.models.ticker import (
 )
 
 __all__ = [
+    # AI models
+    "AIResponse",
+    "ExplainRequest",
     # Ticker models
     "ChartTimeRange",
     "PriceHistory",
@@ -33,12 +29,4 @@ __all__ = [
     "Outlook",
     "OutlookRequest",
     "SentimentSummary",
-    # Explain/AI models
-    "AIResponse",
-    "ExplainRequest",
-    "ExplainResponse",
-    "ResponseSection",
-    "SectionType",
-    "SourceReference",
-    "SourceType",
 ]

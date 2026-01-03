@@ -6,7 +6,8 @@ All responses are descriptive — no predictions or financial advice.
 
 from fastapi import APIRouter
 
-from app.models.explain import AIResponse, ExplainRequest
+from app.models.ai import AIResponse
+from app.models.explain import ExplainRequest
 from app.services.ai_service import AIService
 
 router = APIRouter()
@@ -21,16 +22,15 @@ async def explain(request: ExplainRequest) -> AIResponse:
     Returns a response with 5 explanation fields covering the current situation,
     key drivers, risk/opportunity balance, historical behavior, and a simple recap.
 
-    This provides educational context and understanding — no predictions or
-    financial advice.
+    All fields are required. Content is educational — no predictions or advice.
 
     **Request Body:**
     - **question**: User's question about the market or a ticker
     - **symbol**: Optional ticker symbol for context (e.g., NVDA, AAPL)
-    - **timeframeDays**: Optional timeframe for historical analysis (10-365, default 30)
+    - **timeframeDays**: Optional timeframe for historical analysis (10-365)
     - **simpleMode**: Use simpler language without jargon (default false)
 
-    **Returns:**
+    **Response (all required):**
     - **whatsHappeningNow**: Current situation description
     - **keyDrivers**: Array of key factors
     - **riskVsOpportunity**: Balanced perspective

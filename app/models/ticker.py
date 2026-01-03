@@ -76,6 +76,8 @@ class TickerSnapshot(BaseModel):
                 "change_percent": 1.25,
                 "week_52_high": 199.62,
                 "week_52_low": 164.08,
+                "timestamp": "2024-01-15T16:00:00Z",
+                "source": "yfinance",
             }
         }
     )
@@ -90,6 +92,8 @@ class TickerSnapshot(BaseModel):
     change_percent: float | None = Field(None, description="Regular market change percent")
     week_52_high: float | None = Field(None, description="52-week high price", ge=0)
     week_52_low: float | None = Field(None, description="52-week low price", ge=0)
+    timestamp: datetime = Field(..., description="When data was fetched")
+    source: str = Field(..., description="Data source identifier")
 
 
 class PricePoint(BaseModel):
@@ -114,6 +118,8 @@ class PriceHistory(BaseModel):
                 "current_price": 185.50,
                 "change": 2.30,
                 "change_percent": 1.26,
+                "timestamp": "2024-01-15T16:00:00Z",
+                "source": "yfinance",
             }
         }
     )
@@ -123,6 +129,8 @@ class PriceHistory(BaseModel):
     current_price: float = Field(..., description="Current/latest price", ge=0)
     change: float = Field(..., description="Absolute price change")
     change_percent: float = Field(..., description="Percentage price change")
+    timestamp: datetime = Field(..., description="When data was fetched")
+    source: str = Field(..., description="Data source identifier")
 
     @property
     def is_positive(self) -> bool:

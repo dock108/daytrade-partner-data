@@ -32,15 +32,12 @@ async def test_explain_with_symbol(async_client):
     assert response.status_code == 200
     data = response.json()
 
-    # All 5 fields should be populated
-    assert data["question"] == "What's happening with AAPL?"
-    assert data["symbol"] == "AAPL"
+    # All 5 required fields must be present and non-empty
     assert "whatsHappeningNow" in data and len(data["whatsHappeningNow"]) > 0
     assert "keyDrivers" in data and len(data["keyDrivers"]) > 0
     assert "riskVsOpportunity" in data and len(data["riskVsOpportunity"]) > 0
     assert "historicalBehavior" in data and len(data["historicalBehavior"]) > 0
     assert "simpleRecap" in data and len(data["simpleRecap"]) > 0
-    assert "generatedAt" in data
 
 
 @pytest.mark.asyncio
@@ -55,8 +52,7 @@ async def test_explain_without_symbol(async_client):
     assert response.status_code == 200
     data = response.json()
 
-    # All 5 fields should be populated even without symbol
-    assert data["symbol"] is None
+    # All 5 required fields must be present and non-empty
     assert "whatsHappeningNow" in data and len(data["whatsHappeningNow"]) > 0
     assert "keyDrivers" in data and len(data["keyDrivers"]) > 0
     assert "riskVsOpportunity" in data and len(data["riskVsOpportunity"]) > 0
@@ -168,7 +164,9 @@ async def test_explain_fallback_prevents_500(async_client):
     # Should not return 500 - fallback should handle gracefully
     assert response.status_code == 200
     data = response.json()
-    # Generic response should still have all fields
+    # Generic response should still have all required fields
     assert "whatsHappeningNow" in data
     assert "keyDrivers" in data
-
+    assert "riskVsOpportunity" in data
+    assert "historicalBehavior" in data
+    assert "simpleRecap" in data

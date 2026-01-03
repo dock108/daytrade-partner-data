@@ -2,19 +2,18 @@
 Outlook computation engine.
 
 Computes descriptive statistics for a ticker over a given timeframe
-using historical price data. All outputs are descriptive — no predictions
-or financial advice.
+using historical price data from canonical providers.
+All outputs are descriptive — no predictions or financial advice.
 """
 
 from datetime import UTC, datetime
 
 import numpy as np
-import yfinance as yf
 
-from app.core.config import settings
-from app.core.errors import ExternalServiceError, TickerNotFoundError
+from app.core.errors import TickerNotFoundError
 from app.core.logging import get_logger
 from app.models.outlook import Outlook, SentimentSummary
+from app.providers.history_provider import HistoryProvider
 
 logger = get_logger(__name__)
 
@@ -67,12 +66,12 @@ class OutlookEngine:
     """
     Engine for computing statistical outlooks from historical price data.
 
-    All computations are based on historical data and provide descriptive
-    metrics only — no predictions or financial advice.
+    All data comes from canonical HistoryProvider.
+    Computations are based on historical data — no predictions or advice.
     """
 
     def __init__(self):
-        self._use_mock = settings.USE_MOCK_DATA
+        self._history_provider = HistoryProvider()
 
     async def compute_outlook(
         self,
@@ -91,86 +90,62 @@ class OutlookEngine:
 
         Raises:
             TickerNotFoundError: If ticker is not found.
-            ExternalServiceError: If yfinance fails.
+            ExternalServiceError: If data provider fails.
         """
         symbol = symbol.upper()
         logger.info(f"Computing {timeframe_days}-day outlook for {symbol}")
 
-        if self._use_mock:
-            return self._compute_mock_outlook(symbol, timeframe_days)
+        # Get 3 years of history from canonical provider
+        history = await self._history_provider.get_history(symbol, "3Y", use_cache=True)
 
-        return self._compute_live_outlook(symbol, timeframe_days)
+        if len(history.points) < timeframe_days + 1:
+            raise TickerNotFoundError(symbol)
 
-    def _compute_live_outlook(
-        self,
-        symbol: str,
-        timeframe_days: int,
-    ) -> Outlook:
-        """Compute outlook using live yfinance data."""
-        try:
-            ticker = yf.Ticker(symbol)
+        # Extract close prices
+        closes = history.closes
 
-            # Fetch 3+ years of daily price history
-            hist = ticker.history(period="3y", interval="1d")
+        # Compute rolling returns over timeframe_days windows
+        rolling_returns = self._compute_rolling_returns(closes, timeframe_days)
 
-            if hist.empty or len(hist) < timeframe_days + 1:
-                raise TickerNotFoundError(symbol)
+        if len(rolling_returns) == 0:
+            raise TickerNotFoundError(symbol)
 
-            # Extract close prices
-            closes = hist["Close"].values
+        # Hit rate: fraction of windows with positive return
+        hit_rate = float(np.mean(rolling_returns > 0))
 
-            # Compute daily returns
-            np.diff(closes) / closes[:-1]
+        # Standard deviation of rolling returns
+        rolling_std = float(np.std(rolling_returns))
 
-            # Compute rolling returns over timeframe_days windows
-            rolling_returns = self._compute_rolling_returns(closes, timeframe_days)
+        # Annualized standard deviation (for volatility classification)
+        annualized_std = rolling_std * np.sqrt(252 / timeframe_days)
 
-            if len(rolling_returns) == 0:
-                raise TickerNotFoundError(symbol)
+        # Typical range percent: 1 std dev magnitude as percentage
+        typical_range_percent = rolling_std
 
-            # Hit rate: fraction of windows with positive return
-            hit_rate = float(np.mean(rolling_returns > 0))
+        # Volatility label based on annualized std dev
+        volatility_label = _classify_volatility(annualized_std)
 
-            # Standard deviation of rolling returns
-            rolling_std = float(np.std(rolling_returns))
+        # Recent 90-day return for sentiment
+        recent_90d_return = self._compute_recent_return(closes, 90)
 
-            # Annualized standard deviation (for volatility classification)
-            # Approximate: scale by sqrt(252/timeframe_days) for annualization
-            annualized_std = rolling_std * np.sqrt(252 / timeframe_days)
+        # Determine sentiment from hit rate + recent trend
+        sentiment = _determine_sentiment(hit_rate, recent_90d_return)
 
-            # Typical range percent: 1 std dev magnitude as percentage
-            typical_range_percent = rolling_std
+        # Build key drivers (placeholder + context-aware entries)
+        key_drivers = self._build_key_drivers(volatility_label, sentiment)
 
-            # Volatility label based on annualized std dev
-            volatility_label = _classify_volatility(annualized_std)
-
-            # Recent 90-day return for sentiment
-            recent_90d_return = self._compute_recent_return(closes, 90)
-
-            # Determine sentiment from hit rate + recent trend
-            sentiment = _determine_sentiment(hit_rate, recent_90d_return)
-
-            # Build key drivers (placeholder + context-aware entries)
-            key_drivers = self._build_key_drivers(volatility_label, sentiment)
-
-            return Outlook(
-                ticker=symbol,
-                timeframe_days=timeframe_days,
-                sentiment_summary=sentiment,
-                key_drivers=key_drivers,
-                volatility_band=round(typical_range_percent, 4),
-                historical_hit_rate=round(hit_rate, 2),
-                personal_context=None,
-                volatility_warning=self._get_volatility_warning(volatility_label),
-                timeframe_note=None,
-                generated_at=datetime.now(UTC),
-            )
-
-        except TickerNotFoundError:
-            raise
-        except Exception as e:
-            logger.debug(f"yfinance error computing outlook for {symbol}: {e}")
-            raise ExternalServiceError("yfinance", "Failed to compute outlook")
+        return Outlook(
+            ticker=symbol,
+            timeframe_days=timeframe_days,
+            sentiment_summary=sentiment,
+            key_drivers=key_drivers,
+            volatility_band=round(typical_range_percent, 4),
+            historical_hit_rate=round(hit_rate, 2),
+            personal_context=None,
+            volatility_warning=self._get_volatility_warning(volatility_label),
+            timeframe_note=None,
+            generated_at=datetime.now(UTC),
+        )
 
     def _compute_rolling_returns(
         self,
@@ -236,47 +211,3 @@ class OutlookEngine:
         if volatility_label == "high":
             return "This ticker has shown elevated volatility in recent history."
         return None
-
-    def _compute_mock_outlook(
-        self,
-        symbol: str,
-        timeframe_days: int,
-    ) -> Outlook:
-        """Generate mock outlook for testing."""
-        import random
-
-        # Known tickers for mock data
-        known_tickers = {
-            "AAPL": {"hit_rate": 0.62, "vol": 0.06, "sentiment": SentimentSummary.POSITIVE},
-            "NVDA": {"hit_rate": 0.68, "vol": 0.12, "sentiment": SentimentSummary.POSITIVE},
-            "SPY": {"hit_rate": 0.65, "vol": 0.04, "sentiment": SentimentSummary.POSITIVE},
-            "QQQ": {"hit_rate": 0.63, "vol": 0.06, "sentiment": SentimentSummary.MIXED},
-            "TSLA": {"hit_rate": 0.52, "vol": 0.18, "sentiment": SentimentSummary.CAUTIOUS},
-        }
-
-        if symbol not in known_tickers:
-            # Default mock values
-            hit_rate = random.uniform(0.45, 0.65)
-            vol = random.uniform(0.05, 0.15)
-            sentiment = random.choice(list(SentimentSummary))
-        else:
-            data = known_tickers[symbol]
-            hit_rate = data["hit_rate"] + random.uniform(-0.03, 0.03)
-            vol = data["vol"] + random.uniform(-0.01, 0.01)
-            sentiment = data["sentiment"]
-
-        volatility_label = _classify_volatility(vol * np.sqrt(252 / timeframe_days))
-
-        return Outlook(
-            ticker=symbol,
-            timeframe_days=timeframe_days,
-            sentiment_summary=sentiment,
-            key_drivers=self._build_key_drivers(volatility_label, sentiment),
-            volatility_band=round(vol, 4),
-            historical_hit_rate=round(hit_rate, 2),
-            personal_context=None,
-            volatility_warning=self._get_volatility_warning(volatility_label),
-            timeframe_note=None,
-            generated_at=datetime.now(UTC),
-        )
-

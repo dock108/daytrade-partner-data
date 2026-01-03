@@ -19,8 +19,8 @@ source venv/bin/activate
 pip install -e ".[dev]"
 
 # Configure (optional - works without this)
-echo "USE_MOCK_DATA=true" > .env
-echo "OPENAI_API_KEY=sk-your-key" >> .env
+cp .env.example .env
+# Edit .env if you want to use real APIs
 
 # Run
 uvicorn app.main:app --reload --port 8000
@@ -75,9 +75,10 @@ pytest tests/ -v
 
 | Document | Description |
 |----------|-------------|
+| [AGENTS.md](AGENTS.md) | Context for AI coding assistants |
 | [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) | Architecture and development guide |
 | [docs/API_CONTRACT.md](docs/API_CONTRACT.md) | Endpoint specifications |
-| [docs/AGENTS.md](docs/AGENTS.md) | Context for AI coding assistants |
+| [docs/data-contracts.md](docs/data-contracts.md) | Canonical data provider specs |
 
 ## Configuration
 

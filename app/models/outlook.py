@@ -97,6 +97,7 @@ class Outlook(BaseModel):
                 "volatility_warning": None,
                 "timeframe_note": None,
                 "generated_at": "2024-01-15T10:30:00Z",
+                "source": "yfinance",
             }
         }
     )
@@ -116,3 +117,4 @@ class Outlook(BaseModel):
         default_factory=datetime.utcnow,
         description="When this outlook was generated",
     )
+    source: str = Field(default="yfinance", description="Data source identifier")
