@@ -1,6 +1,7 @@
 """Pydantic models for API request/response schemas."""
 
 from app.models.ai import AIResponse
+from app.models.catalyst import CatalystEvent, CatalystType, ConfidenceLevel
 from app.models.explain import ExplainRequest
 from app.models.outlook import (
     Outlook,
@@ -19,6 +20,10 @@ __all__ = [
     # AI models
     "AIResponse",
     "ExplainRequest",
+    # Catalyst models
+    "CatalystEvent",
+    "CatalystType",
+    "ConfidenceLevel",
     # Ticker models
     "ChartTimeRange",
     "PriceHistory",
