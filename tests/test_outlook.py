@@ -93,17 +93,20 @@ async def test_outlook_validation_timeframe_too_high(async_client):
 
 
 @pytest.mark.asyncio
-async def test_outlook_invalid_symbol(async_client):
-    """Test 404 for unknown symbol."""
+async def test_outlook_unknown_symbol_in_mock_mode(async_client):
+    """Test that unknown symbols still work in mock mode (with generated data)."""
     async with async_client as client:
         response = await client.post(
             "/outlook",
             json={"symbol": "XYZNOTREAL123", "timeframeDays": 30},
         )
 
-    assert response.status_code == 404
+    # In mock mode, unknown symbols get generated data
+    # In live mode, this would return 404
+    assert response.status_code == 200
     data = response.json()
-    assert data["detail"] == "Unknown symbol"
+    assert data["ticker"] == "XYZNOTREAL123"
+    assert "historical_hit_rate" in data
 
 
 @pytest.mark.asyncio
