@@ -180,3 +180,38 @@ class OutlookComposerResponse(BaseModel):
         ...,
         description="Recent news articles relevant to the ticker",
     )
+
+
+class OutlookComposerSources(BaseModel):
+    """Data sources for each outlook component."""
+
+    snapshot: str = Field(..., description="Source for snapshot data")
+    history: str = Field(..., description="Source for price history data")
+    catalysts: str = Field(..., description="Source for catalyst data")
+    news: str = Field(..., description="Source for news data")
+    patterns: str = Field(..., description="Source for pattern analysis")
+
+
+class OutlookComposerTimestamps(BaseModel):
+    """Timestamps for each component used in the outlook."""
+
+    snapshot: datetime = Field(..., description="Snapshot timestamp")
+    history: datetime = Field(..., description="History timestamp")
+    catalysts: datetime = Field(..., description="Catalyst timestamp")
+    news: datetime = Field(..., description="News timestamp")
+    patterns: datetime = Field(..., description="Pattern timestamp")
+    generated_at: datetime = Field(..., description="When the composed outlook was generated")
+
+
+class OutlookComposerWithMeta(OutlookComposerResponse):
+    """Composed outlook response with timestamps and data sources."""
+
+    ticker: str = Field(..., description="Stock/ETF ticker symbol")
+    timestamps: OutlookComposerTimestamps = Field(
+        ...,
+        description="Timestamps for the composed outlook inputs",
+    )
+    data_sources: OutlookComposerSources = Field(
+        ...,
+        description="Data sources for the composed outlook inputs",
+    )

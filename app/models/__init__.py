@@ -6,6 +6,9 @@ from app.models.explain import ExplainRequest
 from app.models.outlook import (
     Outlook,
     OutlookComposerResponse,
+    OutlookComposerSources,
+    OutlookComposerTimestamps,
+    OutlookComposerWithMeta,
     OutlookRequest,
     SentimentSummary,
 )
@@ -35,6 +38,9 @@ __all__ = [
     # Outlook models
     "Outlook",
     "OutlookComposerResponse",
+    "OutlookComposerSources",
+    "OutlookComposerTimestamps",
+    "OutlookComposerWithMeta",
     "OutlookRequest",
     "SentimentSummary",
     # Pattern models

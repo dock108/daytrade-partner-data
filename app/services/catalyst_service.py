@@ -6,6 +6,7 @@ Provides upcoming macro and company-specific catalysts with daily caching.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from app.core.logging import get_logger
@@ -15,6 +16,18 @@ logger = get_logger(__name__)
 
 _CACHE_DATE: datetime | None = None
 _CACHED_EVENTS: list[CatalystEvent] | None = None
+_CACHE_TIMESTAMP: datetime | None = None
+
+SOURCE = "mock"
+
+
+@dataclass(frozen=True)
+class CatalystSnapshot:
+    """Snapshot of catalyst data with metadata."""
+
+    events: list[CatalystEvent]
+    timestamp: datetime
+    source: str = SOURCE
 
 
 def _utc_today() -> datetime:
@@ -74,16 +87,21 @@ class CatalystService:
     """Service providing upcoming catalyst calendar events."""
 
     async def get_catalysts(self) -> list[CatalystEvent]:
-        global _CACHE_DATE, _CACHED_EVENTS
+        snapshot = await self.get_catalyst_snapshot()
+        return snapshot.events
+
+    async def get_catalyst_snapshot(self) -> CatalystSnapshot:
+        global _CACHE_DATE, _CACHED_EVENTS, _CACHE_TIMESTAMP
 
         today = _utc_today()
-        if _CACHE_DATE == today and _CACHED_EVENTS is not None:
+        if _CACHE_DATE == today and _CACHED_EVENTS is not None and _CACHE_TIMESTAMP:
             logger.info("Returning cached catalyst calendar")
-            return _CACHED_EVENTS
+            return CatalystSnapshot(events=_CACHED_EVENTS, timestamp=_CACHE_TIMESTAMP)
 
         logger.info("Generating catalyst calendar snapshot")
         now = datetime.now(timezone.utc)
         events = _generate_mock_events(now)
         _CACHE_DATE = today
         _CACHED_EVENTS = events
-        return events
+        _CACHE_TIMESTAMP = now
+        return CatalystSnapshot(events=events, timestamp=now)

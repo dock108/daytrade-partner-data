@@ -65,6 +65,21 @@ class NewsService:
             sector: Sector name (optional)
             limit: Maximum number of articles to return
         """
+        snapshot = await self.get_news_snapshot(ticker=ticker, sector=sector, limit=limit)
+        return snapshot.items
+
+    async def get_news_snapshot(
+        self,
+        ticker: str | None = None,
+        sector: str | None = None,
+        limit: int = 10,
+    ) -> "NewsSnapshot":
+        """
+        Get ranked news with source metadata.
+
+        Returns:
+            NewsSnapshot with items, timestamp, and data source.
+        """
         context = _QueryContext(
             ticker=ticker.upper() if ticker else None,
             sector=sector,
@@ -81,7 +96,11 @@ class NewsService:
         ]
         ranked.sort(key=lambda item: (item["relevance"], item["published"]), reverse=True)
 
-        return ranked[:limit]
+        return NewsSnapshot(
+            items=ranked[:limit],
+            timestamp=news.timestamp,
+            source=news.source,
+        )
 
     def _filter_by_date(self, items: list[NewsItem], context: _QueryContext) -> list[NewsItem]:
         now = datetime.now(UTC)
@@ -166,3 +185,12 @@ class NewsService:
     @staticmethod
     def _combined_text(item: NewsItem) -> str:
         return f"{item.title} {item.summary}"
+
+
+@dataclass(frozen=True)
+class NewsSnapshot:
+    """News response with source metadata."""
+
+    items: list[dict]
+    timestamp: datetime
+    source: str
