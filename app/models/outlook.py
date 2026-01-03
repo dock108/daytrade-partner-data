@@ -118,3 +118,65 @@ class Outlook(BaseModel):
         description="When this outlook was generated",
     )
     source: str = Field(default="yfinance", description="Data source identifier")
+
+
+class OutlookComposerResponse(BaseModel):
+    """Composed outlook response assembled from multiple services."""
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "big_picture": "Apple Inc. (AAPL) in Technology last traded at $190.15 "
+                "(+0.42% today). Market cap 2.90T. Consumer electronics and software.",
+                "what_could_move_it": [
+                    {
+                        "type": "earnings",
+                        "ticker": "AAPL",
+                        "date": "2024-03-12T13:00:00Z",
+                        "confidence": "high",
+                    }
+                ],
+                "expected_swings": {
+                    "volatility_level": "moderate",
+                    "typical_daily_range": 0.012,
+                    "week_52_range": 0.42,
+                    "last_change_percent": 0.0042,
+                },
+                "historical_behavior": {
+                    "sample_size": 42,
+                    "win_rate": 0.62,
+                    "typical_range": 0.05,
+                    "max_move": 0.18,
+                    "notes": "Behavior clustered around earnings windows.",
+                },
+                "recent_articles": [
+                    {
+                        "headline": "Apple shares rise on services update",
+                        "summary": "Investors reacted to margin commentary.",
+                        "url": "https://example.com",
+                        "published": "2024-01-15T08:00:00Z",
+                        "relevance": 0.7,
+                        "ticker_match": True,
+                    }
+                ],
+            }
+        }
+    )
+
+    big_picture: str = Field(..., description="High-level summary for the ticker")
+    what_could_move_it: list[dict] = Field(
+        ...,
+        description="Upcoming catalysts that may impact price action",
+    )
+    expected_swings: dict[str, float | str] = Field(
+        ...,
+        description="Expected swing metrics derived from recent history",
+    )
+    historical_behavior: dict[str, float | int | str] = Field(
+        ...,
+        description="Descriptive historical behavior summary from the pattern engine",
+    )
+    recent_articles: list[dict] = Field(
+        ...,
+        description="Recent news articles relevant to the ticker",
+    )

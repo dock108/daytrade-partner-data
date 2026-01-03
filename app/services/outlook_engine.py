@@ -12,8 +12,21 @@ import numpy as np
 
 from app.core.errors import TickerNotFoundError
 from app.core.logging import get_logger
-from app.models.outlook import Outlook, SentimentSummary
+from statistics import median
+
+from app.models.catalyst import CatalystEvent
+from app.models.outlook import Outlook, OutlookComposerResponse, SentimentSummary
+from app.models.ticker import (
+    ChartTimeRange,
+    PriceHistory,
+    PricePoint,
+    TickerSnapshot,
+)
 from app.providers.history_provider import HistoryProvider
+from app.services.catalyst_service import CatalystService
+from app.services.news_service import NewsService
+from app.services.pattern_engine import PatternEngine
+from app.services.ticker_service import TickerService
 
 logger = get_logger(__name__)
 
@@ -211,3 +224,109 @@ class OutlookEngine:
         if volatility_label == "high":
             return "This ticker has shown elevated volatility in recent history."
         return None
+
+
+class OutlookComposer:
+    """Compose a structured outlook summary from multiple services."""
+
+    def __init__(
+        self,
+        ticker_service: TickerService | None = None,
+        catalyst_service: CatalystService | None = None,
+        news_service: NewsService | None = None,
+        pattern_engine: PatternEngine | None = None,
+    ) -> None:
+        self._ticker_service = ticker_service or TickerService()
+        self._catalyst_service = catalyst_service or CatalystService()
+        self._news_service = news_service or NewsService()
+        self._pattern_engine = pattern_engine or PatternEngine()
+
+    async def compose_outlook(self, symbol: str) -> OutlookComposerResponse:
+        """Assemble the outlook summary for a ticker."""
+        symbol = symbol.upper()
+        logger.info("Composing outlook summary for %s", symbol)
+
+        snapshot = await self._ticker_service.get_snapshot(symbol)
+        history = await self._ticker_service.get_history(
+            symbol,
+            time_range=ChartTimeRange.ONE_MONTH,
+        )
+        catalysts = await self._catalyst_service.get_catalysts()
+        recent_articles = await self._news_service.get_news(ticker=symbol, limit=6)
+
+        context_tags = self._build_context_tags(symbol, catalysts)
+        behavior = await self._pattern_engine.compute_pattern(symbol, context_tags)
+
+        big_picture = self._build_big_picture(snapshot)
+        what_could_move_it = self._format_catalysts(symbol, catalysts)
+        expected_swings = self._build_expected_swings(snapshot, history)
+
+        return OutlookComposerResponse(
+            big_picture=big_picture,
+            what_could_move_it=what_could_move_it,
+            expected_swings=expected_swings,
+            historical_behavior=behavior.model_dump(),
+            recent_articles=recent_articles,
+        )
+
+    def _build_big_picture(self, snapshot: TickerSnapshot) -> str:
+        change_pct = snapshot.change_percent * 100
+        change_text = f"{change_pct:+.2f}%"
+        return (
+            f"{snapshot.company_name} ({snapshot.ticker}) in {snapshot.sector} "
+            f"last traded at ${snapshot.current_price:.2f} ({change_text} today). "
+            f"Market cap {snapshot.market_cap}. {snapshot.summary}"
+        )
+
+    def _build_expected_swings(
+        self,
+        snapshot: TickerSnapshot,
+        history: PriceHistory,
+    ) -> dict[str, float | str]:
+        typical_daily_range = self._median_daily_range(history.points)
+        week_52_range = self._week_52_range(snapshot.week_52_high, snapshot.week_52_low)
+
+        return {
+            "volatility_level": snapshot.volatility.value,
+            "typical_daily_range": round(typical_daily_range, 4),
+            "week_52_range": round(week_52_range, 4),
+            "last_change_percent": round(snapshot.change_percent, 4),
+        }
+
+    def _median_daily_range(self, points: list[PricePoint]) -> float:
+        ranges: list[float] = []
+        for point in points:
+            if point.close <= 0:
+                continue
+            ranges.append((point.high - point.low) / point.close)
+
+        if not ranges:
+            return 0.0
+        return float(median(ranges))
+
+    def _week_52_range(self, week_52_high: float, week_52_low: float) -> float:
+        if week_52_high <= 0 or week_52_low <= 0:
+            return 0.0
+        return (week_52_high - week_52_low) / week_52_low
+
+    def _build_context_tags(self, symbol: str, catalysts: list[CatalystEvent]) -> list[str]:
+        tags: list[str] = []
+        for event in catalysts:
+            if event.ticker not in {None, symbol}:
+                continue
+            if event.type.value == "earnings":
+                tags.append("earnings")
+            elif event.type.value in {"cpi", "ppi"}:
+                tags.append("high inflation")
+            elif event.type.value == "fed":
+                tags.append("fed week")
+        return sorted(set(tags))
+
+    def _format_catalysts(self, symbol: str, catalysts: list[CatalystEvent]) -> list[dict]:
+        formatted = []
+        for event in catalysts:
+            if event.ticker not in {None, symbol}:
+                continue
+            payload = event.model_dump(mode="json")
+            formatted.append(payload)
+        return formatted[:6]
