@@ -7,7 +7,7 @@ These models align with the iOS app's AIResponse.swift for structured AI respons
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SectionType(str, Enum):
@@ -67,33 +67,112 @@ class ResponseSection(BaseModel):
 class ExplainRequest(BaseModel):
     """Request body for the /explain endpoint."""
 
-    query: str = Field(
+    question: str = Field(
         ...,
-        description="User's question or topic to explain",
+        description="User's question about the market or ticker",
         min_length=1,
         max_length=500,
         examples=["What's happening with NVDA today?"],
     )
-    ticker: str | None = Field(
+    symbol: str | None = Field(
         None,
         description="Optional ticker symbol for context",
         examples=["NVDA"],
     )
-    include_sources: bool = Field(
-        True,
-        description="Whether to include source references",
+    timeframe_days: int | None = Field(
+        None,
+        ge=10,
+        le=365,
+        alias="timeframeDays",
+        description="Timeframe for historical analysis (10-365 days)",
+    )
+    simple_mode: bool = Field(
+        False,
+        alias="simpleMode",
+        description="Use simpler language without jargon",
     )
 
+    @field_validator("symbol")
+    @classmethod
+    def normalize_symbol(cls, v: str | None) -> str | None:
+        """Normalize symbol to uppercase."""
+        return v.upper().strip() if v else None
+
     class Config:
+        populate_by_name = True
         json_schema_extra = {
             "example": {
-                "query": "What's happening with NVDA today?",
-                "ticker": "NVDA",
-                "include_sources": True,
+                "question": "What's happening with NVDA today?",
+                "symbol": "NVDA",
+                "timeframeDays": 30,
+                "simpleMode": False,
             }
         }
 
 
+class AIResponse(BaseModel):
+    """
+    Structured AI response with 5 explanation fields.
+
+    Aligns with iOS AIResponse struct. All content is descriptive —
+    no predictions or financial advice.
+    """
+
+    question: str = Field(..., description="The original question")
+    symbol: str | None = Field(None, description="Ticker symbol if provided")
+    whats_happening_now: str = Field(
+        ...,
+        alias="whatsHappeningNow",
+        description="Current situation description",
+    )
+    key_drivers: list[str] = Field(
+        ...,
+        alias="keyDrivers",
+        description="Key factors driving the situation",
+    )
+    risk_vs_opportunity: str = Field(
+        ...,
+        alias="riskVsOpportunity",
+        description="Balanced perspective on risks and opportunities",
+    )
+    historical_behavior: str = Field(
+        ...,
+        alias="historicalBehavior",
+        description="Historical context and patterns",
+    )
+    simple_recap: str = Field(
+        ...,
+        alias="simpleRecap",
+        description="Single sentence summary in plain language",
+    )
+    generated_at: datetime = Field(
+        ...,
+        alias="generatedAt",
+        description="When this response was generated",
+    )
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "question": "What's happening with NVDA today?",
+                "symbol": "NVDA",
+                "whatsHappeningNow": "NVIDIA shares are trading with elevated volume today as investors digest recent AI infrastructure spending trends.",
+                "keyDrivers": [
+                    "AI infrastructure demand remains robust",
+                    "Data center GPU orders accelerating",
+                    "Competition dynamics evolving",
+                    "Supply chain improvements",
+                ],
+                "riskVsOpportunity": "The AI boom presents significant opportunity, but valuations are elevated. The stock has shown high volatility, which cuts both ways.",
+                "historicalBehavior": "Over 30-day periods, NVDA has been positive 68% of the time, with typical swings of ±12%. High volatility is normal for this name.",
+                "simpleRecap": "NVDA is riding the AI wave with strong demand, but expect bigger price swings than average.",
+                "generatedAt": "2024-01-15T10:30:00Z",
+            }
+        }
+
+
+# Legacy models for backwards compatibility
 class ExplainResponse(BaseModel):
     """
     Structured AI response broken into readable sections.
@@ -119,28 +198,11 @@ class ExplainResponse(BaseModel):
                 "sections": [
                     {
                         "section_type": "current_situation",
-                        "content": "NVIDIA shares are trading higher today following positive analyst commentary on AI chip demand.",
+                        "content": "NVIDIA shares are trading higher today.",
                         "bullet_points": None,
                     },
-                    {
-                        "section_type": "key_drivers",
-                        "content": "Several factors are driving the current movement.",
-                        "bullet_points": [
-                            "Strong data center GPU demand",
-                            "New AI model training contracts",
-                            "Supply chain improvements",
-                        ],
-                    },
                 ],
-                "sources": [
-                    {
-                        "title": "NVIDIA Sees Record AI Chip Orders",
-                        "source": "Reuters",
-                        "source_type": "news",
-                        "summary": "Data center revenue up 40% YoY driven by enterprise AI adoption.",
-                    }
-                ],
+                "sources": [],
                 "timestamp": "2024-01-15T10:30:00Z",
             }
         }
-

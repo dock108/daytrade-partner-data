@@ -1,28 +1,45 @@
 """
-AI endpoint for AI-powered explanations.
+AI endpoint for AI-powered market explanations.
+
+All responses are descriptive — no predictions or financial advice.
 """
 
 from fastapi import APIRouter
 
-from app.models.explain import ExplainRequest, ExplainResponse
-from app.services.explain_service import ExplainService
+from app.models.explain import AIResponse, ExplainRequest
+from app.services.ai_service import AIService
 
 router = APIRouter()
-explain_service = ExplainService()
+ai_service = AIService()
 
 
-@router.post("/explain", response_model=ExplainResponse)
-async def explain(request: ExplainRequest) -> ExplainResponse:
+@router.post("/explain", response_model=AIResponse)
+async def explain(request: ExplainRequest) -> AIResponse:
     """
-    Generate a structured AI explanation for a user query.
+    Generate a structured AI explanation for a market question.
 
-    Returns an article-style response broken into sections with optional sources.
-    Think of this as "Google for stocks" — it provides context and understanding,
-    not predictions or financial advice.
+    Returns a response with 5 explanation fields covering the current situation,
+    key drivers, risk/opportunity balance, historical behavior, and a simple recap.
 
-    - **query**: User's question or topic to explain
-    - **ticker**: Optional ticker symbol for context
-    - **include_sources**: Whether to include source references (default true)
+    This provides educational context and understanding — no predictions or
+    financial advice.
+
+    **Request Body:**
+    - **question**: User's question about the market or a ticker
+    - **symbol**: Optional ticker symbol for context (e.g., NVDA, AAPL)
+    - **timeframeDays**: Optional timeframe for historical analysis (10-365, default 30)
+    - **simpleMode**: Use simpler language without jargon (default false)
+
+    **Returns:**
+    - **whatsHappeningNow**: Current situation description
+    - **keyDrivers**: Array of key factors
+    - **riskVsOpportunity**: Balanced perspective
+    - **historicalBehavior**: Historical context
+    - **simpleRecap**: Single sentence summary
     """
-    return await explain_service.explain(request)
-
+    return await ai_service.generate_explanation(
+        question=request.question,
+        symbol=request.symbol,
+        timeframe_days=request.timeframe_days,
+        simple_mode=request.simple_mode,
+    )
