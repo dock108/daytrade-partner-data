@@ -32,6 +32,7 @@ _KEYWORDS = [
 _PRIMARY_WINDOW_DAYS = 7
 _MACRO_FALLBACK_MIN_DAYS = 30
 _MACRO_FALLBACK_MAX_DAYS = 60
+_MAX_NEWS_AGE_DAYS = 60
 
 
 @dataclass(frozen=True)
@@ -84,8 +85,24 @@ class NewsService:
 
     def _filter_by_date(self, items: list[NewsItem], context: _QueryContext) -> list[NewsItem]:
         now = datetime.now(UTC)
+        max_age_cutoff = now - timedelta(days=_MAX_NEWS_AGE_DAYS)
+        stale_items = [item for item in items if item.published_at < max_age_cutoff]
+        if stale_items:
+            logger.warning(
+                "Rejected %s stale news items older than %s days.",
+                len(stale_items),
+                _MAX_NEWS_AGE_DAYS,
+            )
+        fresh_items = [item for item in items if item.published_at >= max_age_cutoff]
+        if not fresh_items:
+            logger.info(
+                "No news items within %s days; returning empty list.",
+                _MAX_NEWS_AGE_DAYS,
+            )
+            return []
+
         recent_cutoff = now - timedelta(days=_PRIMARY_WINDOW_DAYS)
-        recent_items = [item for item in items if item.published_at >= recent_cutoff]
+        recent_items = [item for item in fresh_items if item.published_at >= recent_cutoff]
 
         if recent_items or not context.macro_theme:
             return recent_items
@@ -94,11 +111,13 @@ class NewsService:
         fallback_end = now - timedelta(days=_MACRO_FALLBACK_MIN_DAYS)
         fallback_items = [
             item
-            for item in items
+            for item in fresh_items
             if fallback_start <= item.published_at <= fallback_end
         ]
         if fallback_items:
             logger.info("Using macro fallback window for news results.")
+        else:
+            logger.info("No macro news in fallback window; returning empty list.")
         return fallback_items
 
     def _filter_by_sector(self, items: list[NewsItem], context: _QueryContext) -> list[NewsItem]:
