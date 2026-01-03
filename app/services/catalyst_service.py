@@ -100,7 +100,7 @@ class CatalystService:
 
         logger.info("Generating catalyst calendar snapshot")
         now = datetime.now(timezone.utc)
-        events = _generate_mock_events(now)
+        events = sorted(_generate_mock_events(now), key=lambda event: event.date)
         _CACHE_DATE = today
         _CACHED_EVENTS = events
         _CACHE_TIMESTAMP = now
