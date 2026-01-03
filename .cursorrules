@@ -1,0 +1,123 @@
+# AI Coding Rules
+
+## Universal Standards
+
+### Code Quality
+- Write clear, self-documenting code. Comments explain WHY, not WHAT.
+- Small, focused functions. One responsibility per function.
+- No magic numbers or hardcoded strings—use constants.
+- Fail fast. Validate inputs early, handle errors explicitly.
+- No silent failures. Log or surface all errors.
+
+### Change Philosophy
+- Prefer minimal, incremental changes over rewrites.
+- Don't refactor unrelated code while fixing bugs.
+- If something works, don't "improve" it without reason.
+- Leave code cleaner than you found it, but don't go overboard.
+
+### Dependencies
+- Don't add new dependencies casually.
+- Justify any new package inline.
+- Prefer standard library solutions when reasonable.
+
+### Testing
+- Add tests for new logic.
+- If fixing a bug, add a regression test.
+- Tests should be deterministic and fast.
+
+### Documentation
+- Update README if behavior changes.
+- Update API_CONTRACT.md for endpoint changes.
+- Document breaking changes explicitly.
+
+### What NOT to Do
+- Don't over-engineer or over-abstract.
+- Don't add features that weren't requested.
+- Don't guess—ask or leave a TODO.
+- Don't use print() in production code—use logging.
+
+---
+
+## Tech Stack: Python 3.11+ / FastAPI
+
+### Python Conventions
+- Python 3.11+ features encouraged
+- Type hints on all function signatures
+- Use `uv` or `pip` with pyproject.toml
+- 100-character line limit
+
+### FastAPI Practices
+- Pydantic models for all request/response validation
+- Async endpoints (`async def`)
+- Proper HTTP status codes
+- Dependency injection for services
+- Include OpenAPI examples in models
+
+### Code Style
+- Follow PEP 8
+- Use `snake_case` for functions/variables
+- Use `PascalCase` for classes/Pydantic models
+- Docstrings for public functions
+
+### Error Handling
+- Use custom exceptions from `app/core/errors.py`
+- Log errors with context
+- Return meaningful error responses
+- Never swallow exceptions silently
+
+### File Structure
+```
+app/
+├── api/         # HTTP routers (endpoints)
+├── services/    # Business logic, external APIs
+├── models/      # Pydantic request/response schemas
+└── core/        # Config, logging, error handling
+```
+
+### Layer Responsibilities
+- **api/**: Request handling, parameter validation, response formatting
+- **services/**: Business logic, external API calls, data transformation
+- **models/**: Schema definitions with validation and examples
+- **core/**: Cross-cutting concerns (config, errors, logging)
+
+---
+
+## Project: daytrade-partner-data
+
+### Purpose
+Backend API and ML layer for the TradeLens iOS trading companion app.
+
+### Core Principles
+- **Single source of truth**: iOS app talks ONLY to this backend
+- **Mock-first development**: Every service works without external APIs
+- **Schema alignment**: Pydantic models match iOS Swift structs
+- **Descriptive, not predictive**: No financial advice in responses
+
+### Relationship to iOS App
+- `daytrade-partner` (iOS) is the client
+- `daytrade-partner-data` (this repo) is the backend
+- All market data, outlooks, and AI explanations come from here
+- Future ML/analytics exposed only through this API
+
+### Key Directories
+- `app/api/` — Endpoints matching iOS app needs
+- `app/services/` — yfinance, OpenAI integration
+- `app/models/` — Schemas aligned with iOS structs
+- `docs/API_CONTRACT.md` — Authoritative endpoint spec
+
+### iOS Model Alignment
+| Backend | iOS |
+|---------|-----|
+| `TickerSnapshot` | `TickerInfo` |
+| `PriceHistory` | `PriceHistory` |
+| `Outlook` | `Outlook` |
+| `ExplainResponse` | `AIResponse` |
+
+### Protected Files
+- `docs/API_CONTRACT.md` — Breaking changes require version bump
+- iOS struct compatibility must be maintained
+
+### Feature Flags
+- `USE_MOCK_DATA=true` — Use mock data (default)
+- External API keys only needed when mocks disabled
+
