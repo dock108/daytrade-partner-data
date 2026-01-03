@@ -5,6 +5,7 @@ from app.models.catalyst import CatalystEvent, CatalystType, ConfidenceLevel
 from app.models.explain import ExplainRequest
 from app.models.outlook import (
     Outlook,
+    OutlookComposerResponse,
     OutlookRequest,
     SentimentSummary,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "VolatilityLevel",
     # Outlook models
     "Outlook",
+    "OutlookComposerResponse",
     "OutlookRequest",
     "SentimentSummary",
     # Pattern models
