@@ -6,7 +6,7 @@ with fallback to mock data when USE_MOCK_DATA is enabled.
 """
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import yfinance as yf
 
@@ -41,9 +41,9 @@ def _calculate_volatility(week_52_high: float, week_52_low: float) -> Volatility
     """Classify volatility based on 52-week price range."""
     if week_52_high <= 0 or week_52_low <= 0:
         return VolatilityLevel.MODERATE
-    
+
     range_percent = (week_52_high - week_52_low) / week_52_low * 100
-    
+
     if range_percent < 30:
         return VolatilityLevel.LOW
     elif range_percent < 60:
@@ -63,7 +63,7 @@ class TickerService:
             "market_cap": "1.22T",
             "volatility": VolatilityLevel.HIGH,
             "summary": "Leading designer of graphics processing units (GPUs) for gaming, "
-                       "professional visualization, data centers, and automotive markets.",
+            "professional visualization, data centers, and automotive markets.",
             "base_price": 485.0,
         },
         "AAPL": {
@@ -72,7 +72,7 @@ class TickerService:
             "market_cap": "2.89T",
             "volatility": VolatilityLevel.LOW,
             "summary": "Consumer electronics and software company known for iPhone, Mac, "
-                       "and services ecosystem.",
+            "and services ecosystem.",
             "base_price": 185.0,
         },
         "MSFT": {
@@ -81,7 +81,7 @@ class TickerService:
             "market_cap": "2.78T",
             "volatility": VolatilityLevel.LOW,
             "summary": "Enterprise software giant with cloud computing (Azure), "
-                       "productivity tools, and gaming divisions.",
+            "productivity tools, and gaming divisions.",
             "base_price": 375.0,
         },
         "GOOGL": {
@@ -90,7 +90,7 @@ class TickerService:
             "market_cap": "1.75T",
             "volatility": VolatilityLevel.MODERATE,
             "summary": "Parent company of Google, leading in search, advertising, "
-                       "cloud computing, and AI research.",
+            "cloud computing, and AI research.",
             "base_price": 142.0,
         },
         "AMZN": {
@@ -99,7 +99,7 @@ class TickerService:
             "market_cap": "1.55T",
             "volatility": VolatilityLevel.MODERATE,
             "summary": "E-commerce and cloud computing leader with AWS, retail, "
-                       "and streaming services.",
+            "and streaming services.",
             "base_price": 155.0,
         },
         "META": {
@@ -108,7 +108,7 @@ class TickerService:
             "market_cap": "895B",
             "volatility": VolatilityLevel.HIGH,
             "summary": "Social media conglomerate operating Facebook, Instagram, "
-                       "WhatsApp, and Reality Labs.",
+            "WhatsApp, and Reality Labs.",
             "base_price": 355.0,
         },
         "TSLA": {
@@ -117,7 +117,7 @@ class TickerService:
             "market_cap": "785B",
             "volatility": VolatilityLevel.HIGH,
             "summary": "Electric vehicle manufacturer and clean energy company "
-                       "with autonomous driving technology.",
+            "with autonomous driving technology.",
             "base_price": 245.0,
         },
         "SPY": {
@@ -126,7 +126,7 @@ class TickerService:
             "market_cap": "485B",
             "volatility": VolatilityLevel.LOW,
             "summary": "Exchange-traded fund tracking the S&P 500 index, "
-                       "providing broad market exposure.",
+            "providing broad market exposure.",
             "base_price": 475.0,
         },
         "QQQ": {
@@ -135,7 +135,7 @@ class TickerService:
             "market_cap": "195B",
             "volatility": VolatilityLevel.MODERATE,
             "summary": "ETF tracking the Nasdaq-100 Index, focused on "
-                       "large-cap tech and growth stocks.",
+            "large-cap tech and growth stocks.",
             "base_price": 405.0,
         },
         "AMD": {
@@ -143,8 +143,7 @@ class TickerService:
             "sector": "Technology",
             "market_cap": "225B",
             "volatility": VolatilityLevel.HIGH,
-            "summary": "Semiconductor company competing in CPUs, GPUs, "
-                       "and data center processors.",
+            "summary": "Semiconductor company competing in CPUs, GPUs, and data center processors.",
             "base_price": 138.0,
         },
     }
@@ -203,28 +202,28 @@ class TickerService:
         try:
             ticker = yf.Ticker(symbol)
             info = ticker.info
-            
+
             # Check if we got valid data
             if not info or info.get("regularMarketPrice") is None:
                 # Try to check if it's a valid symbol by looking at other fields
                 if not info.get("longName") and not info.get("shortName"):
                     raise TickerNotFoundError(symbol)
-            
+
             # Extract fields with fallbacks
             company_name = info.get("longName") or info.get("shortName") or symbol
             sector = info.get("sector") or info.get("quoteType", "Unknown")
             market_cap = _format_market_cap(info.get("marketCap"))
-            
+
             current_price = info.get("regularMarketPrice") or info.get("previousClose")
             change_percent = info.get("regularMarketChangePercent")
             week_52_high = info.get("fiftyTwoWeekHigh")
             week_52_low = info.get("fiftyTwoWeekLow")
-            
+
             # Calculate volatility from 52-week range
             volatility = VolatilityLevel.MODERATE
             if week_52_high and week_52_low:
                 volatility = _calculate_volatility(week_52_high, week_52_low)
-            
+
             # Build summary from available info
             summary = info.get("longBusinessSummary", "")
             if summary and len(summary) > 200:
@@ -232,7 +231,7 @@ class TickerService:
                 summary = summary[:200].rsplit(" ", 1)[0] + "..."
             elif not summary:
                 summary = f"{company_name} - {sector}"
-            
+
             return TickerSnapshot(
                 ticker=symbol,
                 company_name=company_name,
@@ -245,7 +244,7 @@ class TickerService:
                 week_52_high=round(week_52_high, 2) if week_52_high else None,
                 week_52_low=round(week_52_low, 2) if week_52_low else None,
             )
-            
+
         except TickerNotFoundError:
             raise
         except Exception as e:
@@ -261,16 +260,16 @@ class TickerService:
         """Fetch price history from yfinance."""
         try:
             ticker = yf.Ticker(symbol)
-            
+
             # Fetch history with appropriate period and interval
             hist = ticker.history(
                 period=time_range.yfinance_period,
                 interval=time_range.yfinance_interval,
             )
-            
+
             if hist.empty:
                 raise TickerNotFoundError(symbol)
-            
+
             # Convert to price points with UTC timestamps
             points: list[PricePoint] = []
             for idx, row in hist.iterrows():
@@ -280,10 +279,10 @@ class TickerService:
                 elif hasattr(idx, "to_pydatetime"):
                     dt = idx.to_pydatetime()
                     if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
+                        dt = dt.replace(tzinfo=UTC)
                 else:
-                    dt = datetime.fromisoformat(str(idx)).replace(tzinfo=timezone.utc)
-                
+                    dt = datetime.fromisoformat(str(idx)).replace(tzinfo=UTC)
+
                 points.append(
                     PricePoint(
                         date=dt,
@@ -292,16 +291,16 @@ class TickerService:
                         low=round(float(row["Low"]), 2),
                     )
                 )
-            
+
             if not points:
                 raise TickerNotFoundError(symbol)
-            
+
             # Calculate change from first to last point
             first_close = points[0].close
             current_price = points[-1].close
             change = round(current_price - first_close, 2)
             change_percent = round((change / first_close) * 100, 2) if first_close else 0.0
-            
+
             return PriceHistory(
                 ticker=symbol,
                 points=points,
@@ -309,7 +308,7 @@ class TickerService:
                 change=change,
                 change_percent=change_percent,
             )
-            
+
         except TickerNotFoundError:
             raise
         except Exception as e:
@@ -363,7 +362,7 @@ class TickerService:
         points: list[PricePoint] = []
         current_price = base_price
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for i in range(num_points, 0, -1):
             date = now - timedelta(days=i)
 

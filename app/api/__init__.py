@@ -1,5 +1,5 @@
 """API routers."""
 
-from app.api import health, market, outlook, ai
+from app.api import ai, health, market, outlook
 
 __all__ = ["health", "market", "outlook", "ai"]

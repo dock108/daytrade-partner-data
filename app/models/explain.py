@@ -7,7 +7,9 @@ These models align with the iOS app's AIResponse.swift for structured AI respons
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SectionType(str, Enum):
@@ -67,47 +69,28 @@ class ResponseSection(BaseModel):
 class ExplainRequest(BaseModel):
     """Request body for the /explain endpoint."""
 
-    question: str = Field(
-        ...,
-        description="User's question about the market or ticker",
-        min_length=1,
-        max_length=500,
-        examples=["What's happening with NVDA today?"],
-    )
-    symbol: str | None = Field(
-        None,
-        description="Optional ticker symbol for context",
-        examples=["NVDA"],
-    )
-    timeframe_days: int | None = Field(
-        None,
-        ge=10,
-        le=365,
-        alias="timeframeDays",
-        description="Timeframe for historical analysis (10-365 days)",
-    )
-    simple_mode: bool = Field(
-        False,
-        alias="simpleMode",
-        description="Use simpler language without jargon",
-    )
-
-    @field_validator("symbol")
-    @classmethod
-    def normalize_symbol(cls, v: str | None) -> str | None:
-        """Normalize symbol to uppercase."""
-        return v.upper().strip() if v else None
-
-    class Config:
-        populate_by_name = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={
             "example": {
                 "question": "What's happening with NVDA today?",
                 "symbol": "NVDA",
                 "timeframeDays": 30,
                 "simpleMode": False,
             }
-        }
+        },
+    )
+
+    question: str = Field(..., description="User's question", min_length=1, max_length=500)
+    symbol: str | None = Field(None, description="Optional ticker symbol for context")
+    timeframe_days: Annotated[int | None, Field(ge=10, le=365, alias="timeframeDays")] = None
+    simple_mode: Annotated[bool, Field(alias="simpleMode")] = False
+
+    @field_validator("symbol")
+    @classmethod
+    def normalize_symbol(cls, v: str | None) -> str | None:
+        """Normalize symbol to uppercase."""
+        return v.upper().strip() if v else None
 
 
 class AIResponse(BaseModel):
@@ -118,91 +101,52 @@ class AIResponse(BaseModel):
     no predictions or financial advice.
     """
 
-    question: str = Field(..., description="The original question")
-    symbol: str | None = Field(None, description="Ticker symbol if provided")
-    whats_happening_now: str = Field(
-        ...,
-        alias="whatsHappeningNow",
-        description="Current situation description",
-    )
-    key_drivers: list[str] = Field(
-        ...,
-        alias="keyDrivers",
-        description="Key factors driving the situation",
-    )
-    risk_vs_opportunity: str = Field(
-        ...,
-        alias="riskVsOpportunity",
-        description="Balanced perspective on risks and opportunities",
-    )
-    historical_behavior: str = Field(
-        ...,
-        alias="historicalBehavior",
-        description="Historical context and patterns",
-    )
-    simple_recap: str = Field(
-        ...,
-        alias="simpleRecap",
-        description="Single sentence summary in plain language",
-    )
-    generated_at: datetime = Field(
-        ...,
-        alias="generatedAt",
-        description="When this response was generated",
-    )
-
-    class Config:
-        populate_by_name = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={
             "example": {
                 "question": "What's happening with NVDA today?",
                 "symbol": "NVDA",
-                "whatsHappeningNow": "NVIDIA shares are trading with elevated volume today as investors digest recent AI infrastructure spending trends.",
-                "keyDrivers": [
-                    "AI infrastructure demand remains robust",
-                    "Data center GPU orders accelerating",
-                    "Competition dynamics evolving",
-                    "Supply chain improvements",
-                ],
-                "riskVsOpportunity": "The AI boom presents significant opportunity, but valuations are elevated. The stock has shown high volatility, which cuts both ways.",
-                "historicalBehavior": "Over 30-day periods, NVDA has been positive 68% of the time, with typical swings of ±12%. High volatility is normal for this name.",
-                "simpleRecap": "NVDA is riding the AI wave with strong demand, but expect bigger price swings than average.",
+                "whatsHappeningNow": "NVIDIA shares are trading with elevated volume...",
+                "keyDrivers": ["AI infrastructure demand", "Data center growth"],
+                "riskVsOpportunity": "The AI boom presents opportunity, but valuations are elevated.",
+                "historicalBehavior": "Over 30-day periods, NVDA has been positive 68% of the time.",
+                "simpleRecap": "NVDA is riding the AI wave with strong demand.",
                 "generatedAt": "2024-01-15T10:30:00Z",
             }
-        }
+        },
+    )
+
+    question: str = Field(..., description="The original question")
+    symbol: str | None = Field(None, description="Ticker symbol if provided")
+    whats_happening_now: str = Field(
+        ..., alias="whatsHappeningNow", description="Current situation"
+    )
+    key_drivers: list[str] = Field(..., alias="keyDrivers", description="Key factors")
+    risk_vs_opportunity: str = Field(..., alias="riskVsOpportunity", description="Risk/opportunity")
+    historical_behavior: str = Field(
+        ..., alias="historicalBehavior", description="Historical context"
+    )
+    simple_recap: str = Field(..., alias="simpleRecap", description="One-sentence summary")
+    generated_at: datetime = Field(..., alias="generatedAt", description="Generation timestamp")
 
 
-# Legacy models for backwards compatibility
+# Legacy model for backwards compatibility (not actively used)
 class ExplainResponse(BaseModel):
-    """
-    Structured AI response broken into readable sections.
+    """Legacy response model with sections. Kept for backwards compatibility."""
 
-    Aligns with iOS AIResponse struct.
-    """
-
-    query: str = Field(..., description="The original query")
-    sections: list[ResponseSection] = Field(..., description="Response sections")
-    sources: list[SourceReference] = Field(
-        default_factory=list,
-        description="Source references for deeper reading",
-    )
-    timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
-        description="When the response was generated",
-    )
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "query": "What's happening with NVDA today?",
-                "sections": [
-                    {
-                        "section_type": "current_situation",
-                        "content": "NVIDIA shares are trading higher today.",
-                        "bullet_points": None,
-                    },
-                ],
+                "sections": [],
                 "sources": [],
                 "timestamp": "2024-01-15T10:30:00Z",
             }
         }
+    )
+
+    query: str = Field(..., description="The original query")
+    sections: list[ResponseSection] = Field(..., description="Response sections")
+    sources: list[SourceReference] = Field(default_factory=list, description="Source references")
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Generation timestamp")

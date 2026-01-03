@@ -3,7 +3,7 @@ Tests for outlook endpoint.
 """
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 
@@ -134,17 +134,18 @@ async def test_outlook_no_prediction_language(async_client):
 
     assert response.status_code == 200
     data = response.json()
-    
+
     # Combine all text fields to check for forbidden language
-    all_text = " ".join([
-        data.get("personal_context") or "",
-        data.get("volatility_warning") or "",
-        data.get("timeframe_note") or "",
-        *data.get("key_drivers", []),
-    ]).lower()
-    
+    all_text = " ".join(
+        [
+            data.get("personal_context") or "",
+            data.get("volatility_warning") or "",
+            data.get("timeframe_note") or "",
+            *data.get("key_drivers", []),
+        ]
+    ).lower()
+
     # No prediction/advice language
     forbidden_words = ["will", "predict", "guarantee", "should buy", "should sell", "recommend"]
     for word in forbidden_words:
         assert word not in all_text, f"Found forbidden word '{word}' in response"
-

@@ -2,11 +2,16 @@
 Application configuration via environment variables.
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
     # API Configuration
     API_HOST: str = "0.0.0.0"
@@ -21,12 +26,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o-mini"
 
     # Feature Flags
-    USE_MOCK_DATA: bool = True  # Use mock data instead of live yfinance
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    USE_MOCK_DATA: bool = True
 
 
 settings = Settings()
-

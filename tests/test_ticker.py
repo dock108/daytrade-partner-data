@@ -3,7 +3,7 @@ Tests for market/ticker endpoints.
 """
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 
@@ -90,7 +90,7 @@ async def test_history_points_have_required_fields(async_client):
     assert response.status_code == 200
     data = response.json()
     assert len(data["points"]) > 0
-    
+
     point = data["points"][0]
     assert "date" in point
     assert "close" in point

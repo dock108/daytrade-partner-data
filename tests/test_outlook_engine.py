@@ -8,12 +8,12 @@ without depending on external data sources.
 import numpy as np
 import pytest
 
+from app.models.outlook import SentimentSummary
 from app.services.outlook_engine import (
     OutlookEngine,
     _classify_volatility,
     _determine_sentiment,
 )
-from app.models.outlook import SentimentSummary
 
 
 class TestVolatilityClassification:
@@ -83,10 +83,10 @@ class TestRollingReturnsComputation:
         """Test basic rolling return calculation."""
         # Simple price series: 100, 110, 121 (10% daily returns)
         closes = np.array([100.0, 110.0, 121.0, 133.1])
-        
+
         # Rolling 1-day returns
         returns = engine._compute_rolling_returns(closes, window=1)
-        
+
         # Each return should be ~10%
         assert len(returns) == 3
         np.testing.assert_almost_equal(returns[0], 0.10, decimal=2)
@@ -96,10 +96,10 @@ class TestRollingReturnsComputation:
         """Test rolling returns with longer window."""
         # Prices: 100, 105, 110, 115, 120
         closes = np.array([100.0, 105.0, 110.0, 115.0, 120.0])
-        
+
         # Rolling 2-day returns
         returns = engine._compute_rolling_returns(closes, window=2)
-        
+
         # First return: (110 - 100) / 100 = 0.10
         # Second return: (115 - 105) / 105 ≈ 0.095
         # Third return: (120 - 110) / 110 ≈ 0.091
@@ -116,7 +116,7 @@ class TestRollingReturnsComputation:
         """Test with declining prices."""
         closes = np.array([100.0, 90.0, 81.0])  # 10% daily loss
         returns = engine._compute_rolling_returns(closes, window=1)
-        
+
         assert len(returns) == 2
         np.testing.assert_almost_equal(returns[0], -0.10, decimal=2)
 
@@ -132,7 +132,7 @@ class TestRecentReturnComputation:
     def test_recent_return_basic(self, engine):
         """Test basic recent return calculation."""
         closes = np.array([100.0, 105.0, 110.0, 115.0, 120.0])
-        
+
         # 3-day return: (120 - 105) / 105 ≈ 14.3%
         result = engine._compute_recent_return(closes, days=3)
         np.testing.assert_almost_equal(result, 0.143, decimal=2)
@@ -231,7 +231,7 @@ class TestKeyDriversGeneration:
         """Sentiment should influence driver content."""
         positive_drivers = engine._build_key_drivers("moderate", SentimentSummary.POSITIVE)
         cautious_drivers = engine._build_key_drivers("moderate", SentimentSummary.CAUTIOUS)
-        
+
         # Should have different content based on sentiment
         assert positive_drivers != cautious_drivers
 
@@ -250,7 +250,7 @@ class TestMockOutlookGeneration:
     async def test_mock_outlook_has_all_fields(self, engine):
         """Mock outlook should have all required fields."""
         outlook = await engine.compute_outlook("AAPL", 30)
-        
+
         assert outlook.ticker == "AAPL"
         assert outlook.timeframe_days == 30
         assert outlook.sentiment_summary in list(SentimentSummary)
@@ -265,7 +265,7 @@ class TestMockOutlookGeneration:
         # Known ticker should have specific sentiment
         outlook1 = await engine.compute_outlook("AAPL", 30)
         outlook2 = await engine.compute_outlook("AAPL", 30)
-        
+
         # Hit rate should be similar (within random variation)
         assert abs(outlook1.historical_hit_rate - outlook2.historical_hit_rate) < 0.10
 
@@ -273,8 +273,7 @@ class TestMockOutlookGeneration:
     async def test_mock_outlook_unknown_ticker(self, engine):
         """Unknown tickers should still generate valid outlook."""
         outlook = await engine.compute_outlook("UNKNOWN123", 30)
-        
+
         # Should still have all required fields
         assert outlook.ticker == "UNKNOWN123"
         assert len(outlook.key_drivers) >= 3
-

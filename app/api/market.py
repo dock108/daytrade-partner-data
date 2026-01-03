@@ -40,4 +40,3 @@ async def get_ticker_history(
     - **range**: Time range (1D, 1M, 6M, 1Y)
     """
     return await ticker_service.get_history(symbol, range)
-

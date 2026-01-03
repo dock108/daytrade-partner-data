@@ -7,7 +7,7 @@ These models align with the iOS app's TickerInfo.swift and PriceData.swift.
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class VolatilityLevel(str, Enum):
@@ -41,7 +41,7 @@ class ChartTimeRange(str, Enum):
     def yfinance_interval(self) -> str:
         """Get appropriate interval for this range."""
         mapping = {
-            ChartTimeRange.ONE_DAY: "5m",  # 5-minute intervals for intraday
+            ChartTimeRange.ONE_DAY: "5m",
             ChartTimeRange.ONE_MONTH: "1d",
             ChartTimeRange.SIX_MONTHS: "1d",
             ChartTimeRange.ONE_YEAR: "1d",
@@ -61,29 +61,10 @@ class ChartTimeRange(str, Enum):
 
 
 class TickerSnapshot(BaseModel):
-    """
-    Snapshot information about a ticker.
+    """Snapshot information about a ticker. Aligns with iOS TickerInfo struct."""
 
-    Aligns with iOS TickerInfo struct.
-    """
-
-    ticker: str = Field(..., description="Stock/ETF ticker symbol", examples=["AAPL"])
-    company_name: str = Field(..., description="Full company name", examples=["Apple Inc."])
-    sector: str = Field(..., description="Market sector", examples=["Technology"])
-    market_cap: str = Field(..., description="Formatted market cap", examples=["2.89T"])
-    volatility: VolatilityLevel = Field(..., description="Volatility classification")
-    summary: str = Field(
-        ...,
-        description="Brief company/ticker summary",
-        examples=["Consumer electronics and software company known for iPhone, Mac, and services."],
-    )
-    current_price: float | None = Field(None, description="Current price", ge=0)
-    change_percent: float | None = Field(None, description="Regular market change percent")
-    week_52_high: float | None = Field(None, description="52-week high price", ge=0)
-    week_52_low: float | None = Field(None, description="52-week low price", ge=0)
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "ticker": "AAPL",
                 "company_name": "Apple Inc.",
@@ -97,14 +78,22 @@ class TickerSnapshot(BaseModel):
                 "week_52_low": 164.08,
             }
         }
+    )
+
+    ticker: str = Field(..., description="Stock/ETF ticker symbol")
+    company_name: str = Field(..., description="Full company name")
+    sector: str = Field(..., description="Market sector")
+    market_cap: str = Field(..., description="Formatted market cap")
+    volatility: VolatilityLevel = Field(..., description="Volatility classification")
+    summary: str = Field(..., description="Brief company/ticker summary")
+    current_price: float | None = Field(None, description="Current price", ge=0)
+    change_percent: float | None = Field(None, description="Regular market change percent")
+    week_52_high: float | None = Field(None, description="52-week high price", ge=0)
+    week_52_low: float | None = Field(None, description="52-week low price", ge=0)
 
 
 class PricePoint(BaseModel):
-    """
-    A single price point for charting.
-
-    Aligns with iOS PricePoint struct.
-    """
+    """A single price point for charting. Aligns with iOS PricePoint struct."""
 
     date: datetime = Field(..., description="Date/time of the price point")
     close: float = Field(..., description="Closing price", ge=0)
@@ -113,11 +102,21 @@ class PricePoint(BaseModel):
 
 
 class PriceHistory(BaseModel):
-    """
-    Price history for a ticker.
+    """Price history for a ticker. Aligns with iOS PriceHistory struct."""
 
-    Aligns with iOS PriceHistory struct.
-    """
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "ticker": "AAPL",
+                "points": [
+                    {"date": "2024-01-15T16:00:00Z", "close": 185.50, "high": 186.20, "low": 184.80}
+                ],
+                "current_price": 185.50,
+                "change": 2.30,
+                "change_percent": 1.26,
+            }
+        }
+    )
 
     ticker: str = Field(..., description="Stock/ETF ticker symbol")
     points: list[PricePoint] = Field(..., description="Historical price points")
@@ -133,26 +132,9 @@ class PriceHistory(BaseModel):
     @property
     def min_price(self) -> float:
         """Minimum low price in the history."""
-        if not self.points:
-            return 0.0
-        return min(p.low for p in self.points)
+        return min((p.low for p in self.points), default=0.0)
 
     @property
     def max_price(self) -> float:
         """Maximum high price in the history."""
-        if not self.points:
-            return 0.0
-        return max(p.high for p in self.points)
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "ticker": "AAPL",
-                "points": [
-                    {"date": "2024-01-15T16:00:00Z", "close": 185.50, "high": 186.20, "low": 184.80}
-                ],
-                "current_price": 185.50,
-                "change": 2.30,
-                "change_percent": 1.26,
-            }
-        }
+        return max((p.high for p in self.points), default=0.0)

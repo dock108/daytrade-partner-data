@@ -3,7 +3,7 @@ Tests for /explain endpoint.
 """
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 
@@ -31,7 +31,7 @@ async def test_explain_with_symbol(async_client):
 
     assert response.status_code == 200
     data = response.json()
-    
+
     # All 5 fields should be populated
     assert data["question"] == "What's happening with AAPL?"
     assert data["symbol"] == "AAPL"
@@ -54,7 +54,7 @@ async def test_explain_without_symbol(async_client):
 
     assert response.status_code == 200
     data = response.json()
-    
+
     # All 5 fields should be populated even without symbol
     assert data["symbol"] is None
     assert "whatsHappeningNow" in data and len(data["whatsHappeningNow"]) > 0
@@ -96,15 +96,17 @@ async def test_explain_no_recommendation_language(async_client):
 
     assert response.status_code == 200
     data = response.json()
-    
+
     # Combine all text fields
-    all_text = " ".join([
-        data.get("whatsHappeningNow", ""),
-        data.get("riskVsOpportunity", ""),
-        data.get("historicalBehavior", ""),
-        data.get("simpleRecap", ""),
-    ]).lower()
-    
+    all_text = " ".join(
+        [
+            data.get("whatsHappeningNow", ""),
+            data.get("riskVsOpportunity", ""),
+            data.get("historicalBehavior", ""),
+            data.get("simpleRecap", ""),
+        ]
+    ).lower()
+
     # Check for forbidden recommendation language
     forbidden_phrases = ["you should buy", "you should sell", "i recommend", "buy now", "sell now"]
     for phrase in forbidden_phrases:
@@ -169,4 +171,3 @@ async def test_explain_fallback_prevents_500(async_client):
     # Generic response should still have all fields
     assert "whatsHappeningNow" in data
     assert "keyDrivers" in data
-

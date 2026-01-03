@@ -7,7 +7,7 @@ This is the main entry point for the TradeLens backend API.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, market, outlook, ai
+from app.api import ai, health, market, outlook
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -41,7 +41,7 @@ def create_app() -> FastAPI:
     # CORS configuration
     # Use settings origins if explicitly configured, otherwise use defaults
     origins = settings.CORS_ORIGINS if settings.CORS_ORIGINS != ["*"] else CORS_ORIGINS
-    
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -63,4 +63,3 @@ def create_app() -> FastAPI:
 
 # Create app instance for uvicorn
 app = create_app()
-
