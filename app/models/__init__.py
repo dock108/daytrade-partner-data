@@ -8,6 +8,7 @@ from app.models.outlook import (
     OutlookRequest,
     SentimentSummary,
 )
+from app.models.pattern import BehaviorPattern, BehaviorPatternRequest
 from app.models.ticker import (
     ChartTimeRange,
     PriceHistory,
@@ -34,4 +35,7 @@ __all__ = [
     "Outlook",
     "OutlookRequest",
     "SentimentSummary",
+    # Pattern models
+    "BehaviorPattern",
+    "BehaviorPatternRequest",
 ]

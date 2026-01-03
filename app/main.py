@@ -7,7 +7,7 @@ This is the main entry point for the TradeLens backend API.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import ai, health, market, outlook
+from app.api import ai, health, market, outlook, pattern
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -42,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, tags=["Health"])
     app.include_router(market.router, prefix="/ticker", tags=["Market"])
     app.include_router(outlook.router, tags=["Outlook"])
+    app.include_router(pattern.router, tags=["Patterns"])
     app.include_router(ai.router, tags=["AI"])
 
     logger.info("TradeLens API initialized")
