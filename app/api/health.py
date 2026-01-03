@@ -2,8 +2,6 @@
 Health check endpoint.
 """
 
-from datetime import datetime
-
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -14,8 +12,6 @@ class HealthResponse(BaseModel):
     """Health check response."""
 
     status: str
-    timestamp: datetime
-    version: str
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -23,11 +19,6 @@ async def health_check() -> HealthResponse:
     """
     Health check endpoint.
 
-    Returns the service status, current timestamp, and API version.
+    Returns a simple status indicating the service is running.
     """
-    return HealthResponse(
-        status="healthy",
-        timestamp=datetime.utcnow(),
-        version="0.1.0",
-    )
-
+    return HealthResponse(status="ok")

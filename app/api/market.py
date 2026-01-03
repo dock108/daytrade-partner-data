@@ -1,5 +1,5 @@
 """
-Ticker endpoints for snapshot and history data.
+Market endpoints for ticker snapshot and price history data.
 """
 
 from fastapi import APIRouter, Query

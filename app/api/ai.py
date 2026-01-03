@@ -1,5 +1,5 @@
 """
-Explain endpoint for AI-powered explanations.
+AI endpoint for AI-powered explanations.
 """
 
 from fastapi import APIRouter

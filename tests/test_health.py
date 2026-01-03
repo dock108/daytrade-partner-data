@@ -5,7 +5,7 @@ Tests for health endpoint.
 import pytest
 from httpx import AsyncClient, ASGITransport
 
-from main import app
+from app.main import app
 
 
 @pytest.fixture
@@ -17,13 +17,10 @@ def async_client():
 
 @pytest.mark.asyncio
 async def test_health_check(async_client):
-    """Test health check returns healthy status."""
+    """Test health check returns ok status."""
     async with async_client as client:
         response = await client.get("/health")
 
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "healthy"
-    assert "timestamp" in data
-    assert data["version"] == "0.1.0"
-
+    assert data["status"] == "ok"
