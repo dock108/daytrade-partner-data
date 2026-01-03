@@ -8,23 +8,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import ai, health, market, outlook
-from app.core.config import settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# CORS origins for iOS development
-# iOS Simulator uses localhost, physical devices need local network IP
+# CORS origins - permissive for local development
 CORS_ORIGINS = [
-    "http://localhost:8080",
-    "http://localhost:3000",
-    "http://127.0.0.1:8080",
-    "http://127.0.0.1:3000",
-    # iOS Simulator WebView origins
-    "capacitor://localhost",
-    "ionic://localhost",
-    # TODO: Add production origin when deployed
-    # "https://api.tradelens.app",
+    "http://localhost",
+    "http://127.0.0.1",
+    "*",  # OK for local dev
 ]
 
 
@@ -38,13 +30,9 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    # CORS configuration
-    # Use settings origins if explicitly configured, otherwise use defaults
-    origins = settings.CORS_ORIGINS if settings.CORS_ORIGINS != ["*"] else CORS_ORIGINS
-
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
+        allow_origins=CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

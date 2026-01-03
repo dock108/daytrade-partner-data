@@ -171,3 +171,4 @@ async def test_explain_fallback_prevents_500(async_client):
     # Generic response should still have all fields
     assert "whatsHappeningNow" in data
     assert "keyDrivers" in data
+
