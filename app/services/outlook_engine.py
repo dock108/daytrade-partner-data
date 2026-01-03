@@ -15,7 +15,14 @@ from app.core.logging import get_logger
 from statistics import median
 
 from app.models.catalyst import CatalystEvent
-from app.models.outlook import Outlook, OutlookComposerResponse, SentimentSummary
+from app.models.outlook import (
+    Outlook,
+    OutlookComposerResponse,
+    OutlookComposerSources,
+    OutlookComposerTimestamps,
+    OutlookComposerWithMeta,
+    SentimentSummary,
+)
 from app.models.ticker import (
     ChartTimeRange,
     PriceHistory,
@@ -267,6 +274,56 @@ class OutlookComposer:
             expected_swings=expected_swings,
             historical_behavior=behavior.model_dump(),
             recent_articles=recent_articles,
+        )
+
+    async def compose_outlook_with_meta(self, symbol: str) -> OutlookComposerWithMeta:
+        """Assemble the outlook summary with timestamps and data sources."""
+        symbol = symbol.upper()
+        logger.info("Composing outlook summary with metadata for %s", symbol)
+
+        snapshot = await self._ticker_service.get_snapshot(symbol)
+        history = await self._ticker_service.get_history(
+            symbol,
+            time_range=ChartTimeRange.ONE_MONTH,
+        )
+        catalyst_snapshot = await self._catalyst_service.get_catalyst_snapshot()
+        news_snapshot = await self._news_service.get_news_snapshot(ticker=symbol, limit=6)
+
+        context_tags = self._build_context_tags(symbol, catalyst_snapshot.events)
+        pattern_snapshot = await self._pattern_engine.compute_pattern_snapshot(
+            symbol,
+            context_tags,
+        )
+
+        big_picture = self._build_big_picture(snapshot)
+        what_could_move_it = self._format_catalysts(symbol, catalyst_snapshot.events)
+        expected_swings = self._build_expected_swings(snapshot, history)
+
+        timestamps = OutlookComposerTimestamps(
+            snapshot=snapshot.timestamp,
+            history=history.timestamp,
+            catalysts=catalyst_snapshot.timestamp,
+            news=news_snapshot.timestamp,
+            patterns=pattern_snapshot.timestamp,
+            generated_at=datetime.now(UTC),
+        )
+        data_sources = OutlookComposerSources(
+            snapshot=snapshot.source,
+            history=history.source,
+            catalysts=catalyst_snapshot.source,
+            news=news_snapshot.source,
+            patterns=pattern_snapshot.source,
+        )
+
+        return OutlookComposerWithMeta(
+            ticker=symbol,
+            big_picture=big_picture,
+            what_could_move_it=what_could_move_it,
+            expected_swings=expected_swings,
+            historical_behavior=pattern_snapshot.pattern.model_dump(),
+            recent_articles=news_snapshot.items,
+            timestamps=timestamps,
+            data_sources=data_sources,
         )
 
     def _build_big_picture(self, snapshot: TickerSnapshot) -> str:

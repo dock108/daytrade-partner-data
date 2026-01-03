@@ -149,3 +149,28 @@ async def test_outlook_no_prediction_language(async_client):
     forbidden_words = ["will", "predict", "guarantee", "should buy", "should sell", "recommend"]
     for word in forbidden_words:
         assert word not in all_text, f"Found forbidden word '{word}' in response"
+
+
+@pytest.mark.asyncio
+async def test_outlook_composer_with_metadata(async_client):
+    """Test composed outlook endpoint returns metadata."""
+    async with async_client as client:
+        response = await client.get("/outlook/AAPL")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ticker"] == "AAPL"
+    assert "big_picture" in data
+    assert "what_could_move_it" in data
+    assert "expected_swings" in data
+    assert "historical_behavior" in data
+    assert "recent_articles" in data
+    assert "timestamps" in data
+    assert "data_sources" in data
+
+    timestamps = data["timestamps"]
+    sources = data["data_sources"]
+    for key in ["snapshot", "history", "catalysts", "news", "patterns", "generated_at"]:
+        assert key in timestamps
+    for key in ["snapshot", "history", "catalysts", "news", "patterns"]:
+        assert key in sources

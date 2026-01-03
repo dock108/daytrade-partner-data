@@ -8,6 +8,7 @@ All outputs are descriptive — no predictions or financial advice.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 
 import numpy as np
@@ -49,6 +50,11 @@ class PatternEngine:
         Returns:
             BehaviorPattern summary.
         """
+        snapshot = await self.compute_pattern_snapshot(symbol, context)
+        return snapshot.pattern
+
+    async def compute_pattern_snapshot(self, symbol: str, context: list[str]) -> "PatternSnapshot":
+        """Compute behavior pattern with source metadata."""
         symbol = symbol.upper()
         logger.info("Computing behavior pattern for %s", symbol)
 
@@ -56,29 +62,11 @@ class PatternEngine:
         if len(history.points) < 6:
             raise TickerNotFoundError(symbol)
 
-        window_size = 5
-        returns, ranges = self._compute_window_metrics(history.points, window_size)
-        indices = self._select_window_indices(history.points, window_size, context)
-
-        note = self._build_notes(context, filtered=True)
-        if not indices:
-            indices = list(range(len(returns)))
-            note = self._build_notes(context, filtered=False)
-
-        selected_returns = returns[indices]
-        selected_ranges = ranges[indices]
-
-        sample_size = int(len(selected_returns))
-        win_rate = float(np.mean(selected_returns > 0)) if sample_size else 0.0
-        typical_range = float(np.median(selected_ranges)) if sample_size else 0.0
-        max_move = float(np.max(np.abs(selected_returns))) if sample_size else 0.0
-
-        return BehaviorPattern(
-            sample_size=sample_size,
-            win_rate=round(win_rate, 2),
-            typical_range=round(typical_range, 4),
-            max_move=round(max_move, 4),
-            notes=note,
+        pattern = self._build_pattern(history.points, context)
+        return PatternSnapshot(
+            pattern=pattern,
+            timestamp=history.timestamp,
+            source=history.source,
         )
 
     def _compute_window_metrics(
@@ -110,6 +98,32 @@ class PatternEngine:
             ranges.append((max_high - min_low) / start_price)
 
         return np.array(returns), np.array(ranges)
+
+    def _build_pattern(self, points: list[HistoryPoint], context: list[str]) -> BehaviorPattern:
+        window_size = 5
+        returns, ranges = self._compute_window_metrics(points, window_size)
+        indices = self._select_window_indices(points, window_size, context)
+
+        note = self._build_notes(context, filtered=True)
+        if not indices:
+            indices = list(range(len(returns)))
+            note = self._build_notes(context, filtered=False)
+
+        selected_returns = returns[indices]
+        selected_ranges = ranges[indices]
+
+        sample_size = int(len(selected_returns))
+        win_rate = float(np.mean(selected_returns > 0)) if sample_size else 0.0
+        typical_range = float(np.median(selected_ranges)) if sample_size else 0.0
+        max_move = float(np.max(np.abs(selected_returns))) if sample_size else 0.0
+
+        return BehaviorPattern(
+            sample_size=sample_size,
+            win_rate=round(win_rate, 2),
+            typical_range=round(typical_range, 4),
+            max_move=round(max_move, 4),
+            notes=note,
+        )
 
     def _select_window_indices(
         self,
@@ -169,3 +183,12 @@ class PatternEngine:
         return (
             f"No direct matches for {readable}; using broader history for context only."
         )
+
+
+@dataclass(frozen=True)
+class PatternSnapshot:
+    """Pattern analysis result with metadata."""
+
+    pattern: BehaviorPattern
+    timestamp: datetime
+    source: str

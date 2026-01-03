@@ -7,11 +7,12 @@ All outputs are descriptive — no predictions or financial advice.
 
 from fastapi import APIRouter
 
-from app.models.outlook import Outlook, OutlookRequest
-from app.services.outlook_engine import OutlookEngine
+from app.models.outlook import Outlook, OutlookComposerWithMeta, OutlookRequest
+from app.services.outlook_engine import OutlookComposer, OutlookEngine
 
 router = APIRouter()
 outlook_engine = OutlookEngine()
+outlook_composer = OutlookComposer()
 
 
 @router.post("/outlook", response_model=Outlook)
@@ -37,3 +38,15 @@ async def generate_outlook(request: OutlookRequest) -> Outlook:
         symbol=request.symbol,
         timeframe_days=request.timeframe_days,
     )
+
+
+@router.get("/outlook/{ticker}", response_model=OutlookComposerWithMeta)
+async def get_outlook_summary(ticker: str) -> OutlookComposerWithMeta:
+    """
+    Return a composed outlook summary for a ticker.
+
+    Includes structured sections (big picture, catalysts, expected swings,
+    historical behavior, and recent articles), plus timestamps and data sources
+    for each component.
+    """
+    return await outlook_composer.compose_outlook_with_meta(ticker)
