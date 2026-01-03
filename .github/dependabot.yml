@@ -1,0 +1,113 @@
+# Dependabot configuration for automated dependency updates
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+
+updates:
+  # Python dependencies (pip/pyproject.toml)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "python"
+    reviewers:
+      - "dock108"
+    # Group related updates to reduce PR noise
+    groups:
+      # Core framework updates
+      fastapi:
+        patterns:
+          - "fastapi*"
+          - "starlette*"
+          - "uvicorn*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Pydantic ecosystem
+      pydantic:
+        patterns:
+          - "pydantic*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Data/ML dependencies
+      data:
+        patterns:
+          - "yfinance*"
+          - "pandas*"
+          - "numpy*"
+        update-types:
+          - "minor"
+          - "patch"
+      # OpenAI and HTTP clients
+      ai-and-http:
+        patterns:
+          - "openai*"
+          - "httpx*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Development tools
+      dev-tools:
+        patterns:
+          - "pytest*"
+          - "ruff*"
+          - "mypy*"
+        update-types:
+          - "minor"
+          - "patch"
+      # All other minor/patch updates
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+        exclude-patterns:
+          - "fastapi*"
+          - "starlette*"
+          - "uvicorn*"
+          - "pydantic*"
+          - "yfinance*"
+          - "pandas*"
+          - "numpy*"
+          - "openai*"
+          - "httpx*"
+          - "pytest*"
+          - "ruff*"
+          - "mypy*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      # Group all action updates together
+      actions:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
+
