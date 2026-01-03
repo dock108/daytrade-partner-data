@@ -7,7 +7,35 @@ These models align with the iOS app's OutlookEngine.swift Outlook struct.
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+class OutlookRequest(BaseModel):
+    """Request model for outlook generation."""
+
+    symbol: str = Field(..., description="Stock/ETF ticker symbol", examples=["AAPL", "SPY"])
+    timeframe_days: int = Field(
+        default=30,
+        ge=10,
+        le=365,
+        alias="timeframeDays",
+        description="Outlook window in days (10-365)",
+    )
+
+    @field_validator("symbol")
+    @classmethod
+    def normalize_symbol(cls, v: str) -> str:
+        """Normalize symbol to uppercase."""
+        return v.upper().strip()
+
+    class Config:
+        populate_by_name = True
+        json_schema_extra = {
+            "example": {
+                "symbol": "AAPL",
+                "timeframeDays": 30,
+            }
+        }
 
 
 class SentimentSummary(str, Enum):
