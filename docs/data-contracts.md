@@ -4,13 +4,15 @@
 
 ## Overview
 
-All market data in the application flows through **canonical providers** in `app/providers/`. This ensures:
+All external data in the application flows through **canonical providers** in `app/providers/`. This architecture ensures:
 
 - ✅ Consistent data shapes across all endpoints
 - ✅ Unified caching with appropriate TTLs
 - ✅ Timestamps and source attribution on all data
 - ✅ No duplicate fetch logic
 - ✅ Easy testing and mocking
+
+---
 
 ## Architecture
 
@@ -40,8 +42,10 @@ All market data in the application flows through **canonical providers** in `app
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
-                 External APIs (yfinance, etc.)
+                 External APIs (yfinance, OpenAI)
 ```
+
+---
 
 ## Providers
 
@@ -49,7 +53,7 @@ All market data in the application flows through **canonical providers** in `app
 
 **Location:** `app/providers/price_provider.py`
 
-**Function:** `get_price(symbol: str) -> PriceData`
+**Function:** `async get_price(symbol: str) -> PriceData`
 
 **Cache TTL:** 30 seconds
 
@@ -79,11 +83,11 @@ class PriceData:
 
 **Location:** `app/providers/history_provider.py`
 
-**Function:** `get_history(symbol: str, period: str) -> HistoryData`
+**Function:** `async get_history(symbol: str, period: str) -> HistoryData`
 
 **Cache TTL:** 1 hour
 
-**Periods:** `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `3Y`, `5Y`
+**Supported Periods:** `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `3Y`, `5Y`
 
 **Response Schema:**
 
@@ -120,9 +124,11 @@ class HistoryData:
 
 **Location:** `app/providers/news_provider.py`
 
-**Function:** `get_news(symbol: str | None, limit: int) -> NewsData`
+**Function:** `async get_news(symbol: str | None, limit: int) -> NewsData`
 
 **Cache TTL:** 6 hours
+
+**Status:** Currently returns mock data. Real news API integration planned.
 
 **Response Schema:**
 
@@ -174,7 +180,7 @@ cache.set_news(data, symbol="AAPL")
 cache.get_news("AAPL")
 
 # Stats
-cache.stats  # {"hits": 10, "misses": 5, "hit_rate": 0.67}
+cache.stats  # {"size": 10, "hits": 10, "misses": 5, "hit_rate": 0.67}
 ```
 
 ---
@@ -226,7 +232,7 @@ These fields enable:
 
 Tests verify:
 
-1. **All endpoints use providers** — No direct API access
+1. **All services use providers** — No direct API access
 2. **Timestamps exist** — Every response has `timestamp`
 3. **Sources exist** — Every response has `source`
 4. **Schemas match** — Correct field names and types
@@ -239,6 +245,17 @@ pytest tests/test_providers.py -v
 
 ---
 
+## Mock vs Live Mode
+
+| Mode | `USE_MOCK_DATA` | Provider Behavior |
+|------|-----------------|-------------------|
+| Mock | `true` (default) | Returns deterministic mock data |
+| Live | `false` | Fetches from yfinance/real APIs |
+
+Mock mode is always used for tests. Live mode requires network access.
+
+---
+
 ## Adding New Providers
 
 1. Create `app/providers/new_provider.py`
@@ -248,4 +265,3 @@ pytest tests/test_providers.py -v
 5. Export from `app/providers/__init__.py`
 6. Add tests in `tests/test_providers.py`
 7. Update this document
-

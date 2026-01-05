@@ -1,6 +1,6 @@
 # TradeLens API Contract
 
-This document defines the HTTP endpoints and JSON schemas that the TradeLens iOS app relies on. Even when endpoints are initially mocked, the contract here is authoritative.
+This document defines the HTTP endpoints and JSON schemas that the TradeLens iOS app relies on. The schemas here are authoritative — iOS models must align.
 
 ## Base URL
 
@@ -10,6 +10,17 @@ This document defines the HTTP endpoints and JSON schemas that the TradeLens iOS
 ## Authentication
 
 Currently unauthenticated. Future versions will add API key or JWT authentication.
+
+---
+
+## Common Fields
+
+Every API response includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timestamp` | datetime | When the data was fetched (ISO 8601) |
+| `source` | string | Data origin (`yfinance`, `openai`, `mock`) |
 
 ---
 
@@ -45,7 +56,7 @@ GET /health
 
 ### Ticker Snapshot
 
-Get company information and metadata for a ticker.
+Get company information and current price for a ticker.
 
 ```
 GET /ticker/{symbol}/snapshot
@@ -67,12 +78,12 @@ GET /ticker/{symbol}/snapshot
 | `market_cap` | string | Formatted market cap (e.g., "2.89T") |
 | `volatility` | enum | Volatility level: `low`, `moderate`, `high` |
 | `summary` | string | Brief company summary |
-
-**Example Request**
-
-```bash
-curl http://localhost:8000/ticker/AAPL/snapshot
-```
+| `current_price` | number? | Current price |
+| `change_percent` | number? | Price change percentage |
+| `week_52_high` | number? | 52-week high price |
+| `week_52_low` | number? | 52-week low price |
+| `timestamp` | datetime | When data was fetched |
+| `source` | string | Data source identifier |
 
 **Example Response**
 
@@ -83,7 +94,13 @@ curl http://localhost:8000/ticker/AAPL/snapshot
   "sector": "Technology",
   "market_cap": "2.89T",
   "volatility": "low",
-  "summary": "Consumer electronics and software company known for iPhone, Mac, and services ecosystem."
+  "summary": "Consumer electronics and software company.",
+  "current_price": 185.50,
+  "change_percent": 1.25,
+  "week_52_high": 199.62,
+  "week_52_low": 164.08,
+  "timestamp": "2024-01-15T16:00:00Z",
+  "source": "yfinance"
 }
 ```
 
@@ -124,6 +141,8 @@ GET /ticker/{symbol}/history
 | `current_price` | number | Latest price |
 | `change` | number | Absolute price change |
 | `change_percent` | number | Percentage price change |
+| `timestamp` | datetime | When data was fetched |
+| `source` | string | Data source identifier |
 
 **PricePoint Schema**
 
@@ -133,12 +152,6 @@ GET /ticker/{symbol}/history
 | `close` | number | Closing price |
 | `high` | number | High price for the period |
 | `low` | number | Low price for the period |
-
-**Example Request**
-
-```bash
-curl "http://localhost:8000/ticker/NVDA/history?range=1M"
-```
 
 **Example Response**
 
@@ -161,7 +174,9 @@ curl "http://localhost:8000/ticker/NVDA/history?range=1M"
   ],
   "current_price": 485.10,
   "change": 4.85,
-  "change_percent": 1.01
+  "change_percent": 1.01,
+  "timestamp": "2024-01-15T16:00:00Z",
+  "source": "yfinance"
 }
 ```
 
@@ -175,7 +190,7 @@ curl "http://localhost:8000/ticker/NVDA/history?range=1M"
 
 ### Outlook
 
-Generate a structured market outlook for a ticker.
+Generate a statistical outlook for a ticker based on historical behavior.
 
 ```
 GET /outlook
@@ -186,7 +201,7 @@ GET /outlook
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `ticker` | string | Yes | — | Stock/ETF ticker symbol |
-| `timeframe_days` | integer | No | 30 | Outlook window (1-365 days) |
+| `timeframe_days` | integer | No | 30 | Outlook window (10-365 days) |
 
 **Response Schema: Outlook**
 
@@ -197,11 +212,12 @@ GET /outlook
 | `sentiment_summary` | enum | Sentiment: `positive`, `mixed`, `cautious` |
 | `key_drivers` | array[string] | Key factors driving the outlook |
 | `volatility_band` | number | Expected swing as percentage (0.08 = 8%) |
-| `historical_hit_rate` | number | Percentage times ticker was up (0-1) |
+| `historical_hit_rate` | number | Fraction of similar windows with positive return (0-1) |
 | `personal_context` | string? | Tailored note from user history |
-| `volatility_warning` | string? | Warning if above user tolerance |
-| `timeframe_note` | string? | Note if timeframe differs from style |
+| `volatility_warning` | string? | Warning if volatility is high |
+| `timeframe_note` | string? | Note if timeframe differs from typical |
 | `generated_at` | datetime | When outlook was generated (ISO 8601) |
+| `source` | string | Data source identifier |
 
 **Example Request**
 
@@ -219,7 +235,6 @@ curl "http://localhost:8000/outlook?ticker=NVDA&timeframe_days=30"
   "key_drivers": [
     "AI infrastructure spending trends",
     "Semiconductor supply dynamics",
-    "Cloud computing growth rates",
     "Momentum indicators showing recent strength"
   ],
   "volatility_band": 0.12,
@@ -227,7 +242,8 @@ curl "http://localhost:8000/outlook?ticker=NVDA&timeframe_days=30"
   "personal_context": null,
   "volatility_warning": null,
   "timeframe_note": null,
-  "generated_at": "2024-01-15T10:30:00Z"
+  "generated_at": "2024-01-15T10:30:00Z",
+  "source": "yfinance"
 }
 ```
 
@@ -253,48 +269,18 @@ POST /explain
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string | Yes | User's question (1-500 chars) |
-| `ticker` | string? | No | Optional ticker for context |
-| `include_sources` | boolean | No | Include sources (default: true) |
+| `question` | string | Yes | User's question (1-500 chars) |
+| `symbol` | string? | No | Optional ticker for context |
 
-**Response Schema: ExplainResponse**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `query` | string | Original query |
-| `sections` | array[ResponseSection] | Response sections |
-| `sources` | array[SourceReference] | Source references |
-| `timestamp` | datetime | When generated (ISO 8601) |
-
-**ResponseSection Schema**
+**Response Schema: AIResponse**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `section_type` | enum | Section type (see below) |
-| `content` | string | Main section content |
-| `bullet_points` | array[string]? | Optional bullet points |
-
-**Section Types**
-
-| Value | Display Name |
-|-------|--------------|
-| `current_situation` | What's happening now |
-| `key_drivers` | Key drivers |
-| `risk_opportunity` | Risk vs opportunity |
-| `historical` | Historical context |
-| `recap` | Quick take |
-| `your_context` | Your trading context |
-| `personal_note` | Personal note |
-| `digest` | Here's the story in simple terms |
-
-**SourceReference Schema**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `title` | string | Source title |
-| `source` | string | Source name/publication |
-| `source_type` | enum | Type: `news`, `research`, `filings`, `analysis` |
-| `summary` | string | Brief summary |
+| `whats_happening_now` | string | Current market situation summary |
+| `key_drivers` | array[string] | Key factors driving the situation |
+| `risk_vs_opportunity` | string | Balanced risk/opportunity perspective |
+| `historical_behavior` | string | Relevant historical context |
+| `simple_recap` | string | One-sentence summary |
 
 **Example Request**
 
@@ -302,9 +288,8 @@ POST /explain
 curl -X POST http://localhost:8000/explain \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "What'\''s happening with NVDA today?",
-    "ticker": "NVDA",
-    "include_sources": true
+    "question": "What'\''s happening with NVDA today?",
+    "symbol": "NVDA"
   }'
 ```
 
@@ -312,44 +297,19 @@ curl -X POST http://localhost:8000/explain \
 
 ```json
 {
-  "query": "What's happening with NVDA today?",
-  "sections": [
-    {
-      "section_type": "current_situation",
-      "content": "NVIDIA shares are trading higher today following positive analyst commentary on AI chip demand.",
-      "bullet_points": null
-    },
-    {
-      "section_type": "key_drivers",
-      "content": "Several factors are driving the current movement.",
-      "bullet_points": [
-        "AI infrastructure demand remains robust",
-        "Data center GPU orders accelerating",
-        "Supply chain constraints easing"
-      ]
-    },
-    {
-      "section_type": "risk_opportunity",
-      "content": "For NVDA, the risk/reward setup depends on your timeframe. Near-term volatility could present opportunities.",
-      "bullet_points": null
-    },
-    {
-      "section_type": "recap",
-      "content": "In short: NVDA is navigating a dynamic environment with multiple catalysts in play.",
-      "bullet_points": null
-    }
+  "whatsHappeningNow": "NVIDIA shares are trading with elevated volume as investors digest AI infrastructure spending trends.",
+  "keyDrivers": [
+    "AI infrastructure demand remains robust",
+    "Data center GPU orders accelerating",
+    "Competition dynamics evolving"
   ],
-  "sources": [
-    {
-      "title": "NVIDIA Sees Record AI Chip Orders",
-      "source": "Reuters",
-      "source_type": "news",
-      "summary": "Data center revenue up 40% YoY driven by enterprise AI adoption."
-    }
-  ],
-  "timestamp": "2024-01-15T10:30:00Z"
+  "riskVsOpportunity": "The AI boom presents significant opportunity, but valuations are elevated.",
+  "historicalBehavior": "Over 30-day periods, NVDA has been positive 68% of the time with typical swings of ±12%.",
+  "simpleRecap": "NVDA is riding the AI wave with strong demand, but expect bigger price swings than average."
 }
 ```
+
+> **Note:** Response fields use `camelCase` for iOS compatibility. Use `populate_by_name=True` on the backend.
 
 ---
 
@@ -362,10 +322,8 @@ This table shows how backend models align with iOS Swift structs:
 | `TickerSnapshot` | `TickerInfo` | `TradeLens/Models/TickerInfo.swift` |
 | `PriceHistory` | `PriceHistory` | `TradeLens/Models/PriceData.swift` |
 | `PricePoint` | `PricePoint` | `TradeLens/Models/PriceData.swift` |
-| `Outlook` | `Outlook` | `TradeLens/Services/OutlookEngine.swift` |
-| `ExplainResponse` | `AIResponse` | `TradeLens/Models/AIResponse.swift` |
-| `ResponseSection` | `AIResponse.Section` | `TradeLens/Models/AIResponse.swift` |
-| `SourceReference` | `AIResponse.SourceReference` | `TradeLens/Models/AIResponse.swift` |
+| `Outlook` | `Outlook` | `TradeLens/Models/Outlook.swift` |
+| `AIResponse` | `AIResponse` | `TradeLens/Models/AIResponse.swift` |
 
 ## Field Naming Convention
 
@@ -402,4 +360,3 @@ All errors follow a consistent format:
 The API version is returned in the `/health` endpoint. Breaking changes will increment the major version, and the URL path will be updated (e.g., `/v2/ticker/...`).
 
 Current version: **0.1.0**
-

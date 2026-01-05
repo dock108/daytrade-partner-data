@@ -1,10 +1,16 @@
 # TradeLens Backend — Project Guide
 
+## Overview
+
+This repository is the **single source of truth** for all market data consumed by the TradeLens iOS app. The iOS app makes no direct external API calls — everything flows through this FastAPI backend.
+
+---
+
 ## Project Structure
 
 ```
 daytrade-partner-data/
-├── main.py                    # Entry point
+├── main.py                    # Entry point (forwards to app.main)
 ├── pyproject.toml             # Dependencies
 ├── AGENTS.md                  # AI coding assistant context
 ├── .env                       # Environment variables (not committed)
@@ -15,7 +21,7 @@ daytrade-partner-data/
 │   ├── api/                   # HTTP routers
 │   │   ├── health.py          # GET /health
 │   │   ├── market.py          # GET /ticker/{symbol}/*
-│   │   ├── outlook.py         # POST /outlook
+│   │   ├── outlook.py         # GET /outlook
 │   │   └── ai.py              # POST /explain
 │   │
 │   ├── services/              # Business logic
@@ -41,13 +47,15 @@ daytrade-partner-data/
 │       ├── logging.py         # Logging setup
 │       └── errors.py          # Custom exceptions
 │
-├── tests/                     # Test suite (75 tests)
+├── tests/                     # Test suite
 │
 └── docs/                      # Documentation
     ├── PROJECT_GUIDE.md       # This file
     ├── API_CONTRACT.md        # API specification
     └── data-contracts.md      # Canonical provider specs
 ```
+
+---
 
 ## Architecture
 
@@ -81,7 +89,21 @@ daytrade-partner-data/
                  (Yahoo Finance, OpenAI)
 ```
 
-### Design Principles
+---
+
+## Layer Responsibilities
+
+| Layer | Responsibility |
+|-------|----------------|
+| `api/` | HTTP routing, validation, response formatting |
+| `services/` | Business logic, data transformation, orchestration |
+| `providers/` | Data access, caching, external API calls |
+| `models/` | Pydantic schemas with validation |
+| `core/` | Config, logging, error handling |
+
+---
+
+## Design Principles
 
 1. **iOS app has no direct external API access** — All data flows through this backend
 2. **Backend owns the data contracts** — Pydantic models define schemas; iOS mirrors them
@@ -89,15 +111,7 @@ daytrade-partner-data/
 4. **Mock-first development** — All services work without external APIs
 5. **No financial advice** — All outputs are descriptive, never predictive
 
-## Layers
-
-| Layer | Responsibility |
-|-------|----------------|
-| `api/` | HTTP routing, validation, response formatting |
-| `services/` | Business logic, data transformation |
-| `providers/` | Data access, caching, external API calls |
-| `models/` | Pydantic schemas with validation |
-| `core/` | Config, logging, error handling |
+---
 
 ## Code Style
 
@@ -105,6 +119,8 @@ daytrade-partner-data/
 - **100-character line limit**
 - **Async-first**: All service/provider methods are `async`
 - **Pydantic v2**: Use `model_config = ConfigDict(...)` not `class Config`
+
+---
 
 ## Naming Conventions
 
@@ -114,6 +130,8 @@ daytrade-partner-data/
 | Classes | PascalCase | `TickerService` |
 | Functions | snake_case | `get_snapshot()` |
 | Constants | UPPER_SNAKE | `DEFAULT_TIMEFRAME` |
+
+---
 
 ## Adding New Endpoints
 
@@ -125,26 +143,38 @@ daytrade-partner-data/
 6. Update `docs/API_CONTRACT.md`
 7. Add tests in `tests/`
 
+---
+
 ## Running Locally
 
 ```bash
 # Install
 pip install -e ".[dev]"
 
-# Run
+# Run (mock mode)
 uvicorn app.main:app --reload
+
+# Run (live mode with real APIs)
+USE_MOCK_DATA=false uvicorn app.main:app --reload
 
 # Test
 pytest tests/ -v
 ```
 
+---
+
 ## Environment Variables
 
-```env
-USE_MOCK_DATA=true          # Mock data (default: true)
-OPENAI_API_KEY=sk-...       # For AI explanations
-DEBUG=true                  # Debug mode
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `USE_MOCK_DATA` | `true` | Mock data (default: true) |
+| `OPENAI_API_KEY` | `""` | For AI explanations |
+| `OPENAI_MODEL` | `gpt-4o-mini` | Model to use |
+| `DEBUG` | `false` | Debug mode |
+
+Copy `.env.example` to `.env` and set values as needed.
+
+---
 
 ## iOS Model Alignment
 
@@ -154,3 +184,5 @@ DEBUG=true                  # Debug mode
 | `PriceHistory` | `PriceHistory` |
 | `Outlook` | `Outlook` |
 | `AIResponse` | `AIResponse` |
+
+iOS decodes with `keyDecodingStrategy = .convertFromSnakeCase`.
