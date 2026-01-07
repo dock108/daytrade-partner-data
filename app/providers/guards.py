@@ -95,3 +95,4 @@ def validate_provider_response(response: dict) -> bool:
         validate_response_has_timestamp(response) and validate_response_has_source(response)
     )
 
+

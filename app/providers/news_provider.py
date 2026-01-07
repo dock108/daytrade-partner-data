@@ -151,3 +151,4 @@ class NewsProvider:
             timestamp=now,
         )
 
+

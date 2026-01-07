@@ -186,3 +186,4 @@ class PriceProvider:
             timestamp=datetime.now(UTC),
         )
 
+

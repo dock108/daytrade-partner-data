@@ -257,3 +257,4 @@ class HistoryProvider:
             timestamp=datetime.now(UTC),
         )
 
+

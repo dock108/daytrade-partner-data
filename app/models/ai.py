@@ -57,3 +57,4 @@ class AIResponse(BaseModel):
         description="One-sentence summary in plain language",
     )
 
+

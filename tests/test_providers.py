@@ -266,3 +266,4 @@ class TestProviderIntegration:
         assert outlook.historical_hit_rate >= 0
         assert outlook.generated_at is not None
 
+
